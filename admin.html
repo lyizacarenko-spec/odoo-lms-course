@@ -281,6 +281,14 @@ async function removeVideo(){
   renderLesson();
 }
 
+async function removeAudio(){
+  if (!confirm('Прибрати аудіо з цього кроку?')) return;
+  const { error } = await sb.from('lessons').update({ audio_url: null }).eq('id', state.lessonId);
+  if (error){ toast('Помилка видалення'); console.error(error); return; }
+  toast('Аудіо видалено');
+  renderLesson();
+}
+
 // ---------- ПРОГРЕС КОМАНДИ ----------
 
 async function renderProgress(){
@@ -444,6 +452,7 @@ async function renderCourse(){
 
   state.lessons.forEach((l, idx) => {
     const hasVideo = !!l.video_url;
+    const hasAudio = !!l.audio_url;
     const hasImages = l.images && l.images.length;
     const hasText = l.transcript_text && l.transcript_text.trim().length > 0;
     html += `
@@ -453,6 +462,7 @@ async function renderCourse(){
         <div class="funnel-step-icons">
           <span class="${hasText ? 'on' : ''}" title="Текст">📝</span>
           <span class="${hasVideo ? 'on' : ''}" title="Відео">🎥</span>
+          <span class="${hasAudio ? 'on' : ''}" title="Аудіо">🎧</span>
           <span class="${hasImages ? 'on' : ''}" title="Фото">🖼️</span>
         </div>
       </div>
@@ -546,12 +556,6 @@ async function renderLesson(){
       <label class="field-label">Назва кроку</label>
       <input type="text" id="lessonTitle" value="${escAttr(lesson.title)}" />
 
-      <label class="field-label">Короткий опис / вступ</label>
-      <textarea id="lessonDesc">${lesson.description || ''}</textarea>
-
-      <label class="field-label">Текст кроку / транскрипт</label>
-      <textarea id="lessonText" style="min-height:220px;">${lesson.transcript_text || ''}</textarea>
-
       <label class="field-label">Відео</label>
       ${lesson.video_url ? renderVideoPreview(lesson.video_url) : ''}
       ${lesson.video_url ? `<button class="btn danger small" style="margin-bottom:10px;" onclick="removeVideo()">Видалити відео</button>` : ''}
@@ -565,6 +569,18 @@ async function renderLesson(){
       <label class="field-label" style="margin-top:10px;">Варіант 2 — завантажити файл (до 50 МБ)</label>
       <input type="file" id="videoFile" accept="video/*" />
       <div class="upload-status" id="videoStatus"></div>
+
+      <label class="field-label" style="margin-top:16px;">Аудіо (mp3)</label>
+      ${lesson.audio_url ? `<audio controls style="width:100%;margin-bottom:8px;"><source src="${lesson.audio_url}"></audio>
+        <button class="btn danger small" style="margin-bottom:10px;" onclick="removeAudio()">Видалити аудіо</button>` : ''}
+      <input type="file" id="audioFile" accept="audio/*,.mp3" />
+      <div class="upload-status" id="audioStatus"></div>
+
+      <label class="field-label" style="margin-top:16px;">Короткий опис / вступ (під відео)</label>
+      <textarea id="lessonDesc">${lesson.description || ''}</textarea>
+
+      <label class="field-label">Текст кроку / транскрипція відео</label>
+      <textarea id="lessonText" style="min-height:220px;">${lesson.transcript_text || ''}</textarea>
 
       <label class="field-label" style="margin-top:12px;">Фото / картинки</label>
       <div class="thumb-row">${thumbs}</div>
@@ -670,6 +686,41 @@ document.addEventListener('change', async (e) => {
     } catch (ex){
       statusEl.textContent = 'Неочікувана помилка: ' + ex.message;
       alert('Неочікувана помилка при завантаженні відео:\n' + ex.message);
+      console.error(ex);
+    }
+  }
+
+  if (e.target.id === 'audioFile'){
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('audioStatus');
+    if (file.size > 50 * 1024 * 1024){
+      statusEl.textContent = 'Файл більший за 50 МБ (' + (file.size/1024/1024).toFixed(1) + ' МБ).';
+      return;
+    }
+    statusEl.textContent = `Завантаження аудіо (${(file.size/1024/1024).toFixed(1)} МБ)...`;
+    try {
+      const safeName = sanitizeFileName(file.name);
+      const path = `${state.lessonId}/${Date.now()}_${safeName}`;
+      const { error } = await sb.storage.from('lesson-audio').upload(path, file, { upsert: true });
+      if (error){
+        statusEl.textContent = 'Помилка: ' + error.message;
+        alert('Не вдалося завантажити аудіо:\n' + error.message);
+        console.error(error);
+        return;
+      }
+      const { data: pub } = sb.storage.from('lesson-audio').getPublicUrl(path);
+      const { error: dbError } = await sb.from('lessons').update({ audio_url: pub.publicUrl }).eq('id', state.lessonId);
+      if (dbError){
+        statusEl.textContent = 'Помилка збереження в базі: ' + dbError.message;
+        console.error(dbError);
+        return;
+      }
+      statusEl.textContent = 'Аудіо завантажено ✓';
+      toast('Аудіо додано');
+      renderLesson();
+    } catch (ex){
+      statusEl.textContent = 'Неочікувана помилка: ' + ex.message;
       console.error(ex);
     }
   }
