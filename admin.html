@@ -616,6 +616,16 @@ async function deleteTask(id){
   renderLesson();
 }
 
+// Захист: якщо файл перетягнути мишкою будь-куди на сторінку (не на кнопку вибору),
+// браузер за замовчуванням спробує відкрити файл напряму і "зламає" сторінку. Блокуємо це.
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  if (e.target.tagName !== 'INPUT'){
+    e.preventDefault();
+    toast('Перетягування файлів не підтримується — натисни кнопку "Вибрати файл"');
+  }
+});
+
 render();
 </script>
 </body>
