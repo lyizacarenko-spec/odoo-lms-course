@@ -253,6 +253,14 @@ async function saveVideoUrl(){
   renderLesson();
 }
 
+async function removeVideo(){
+  if (!confirm('Прибрати відео з цього кроку?')) return;
+  const { error } = await sb.from('lessons').update({ video_url: null }).eq('id', state.lessonId);
+  if (error){ toast('Помилка видалення'); console.error(error); return; }
+  toast('Відео видалено');
+  renderLesson();
+}
+
 // ---------- COURSES (ВІДДІЛИ) ----------
 
 async function loadCourses(){
@@ -454,6 +462,7 @@ async function renderLesson(){
 
       <label class="field-label">Відео</label>
       ${lesson.video_url ? renderVideoPreview(lesson.video_url) : ''}
+      ${lesson.video_url ? `<button class="btn danger small" style="margin-bottom:10px;" onclick="removeVideo()">Видалити відео</button>` : ''}
 
       <label class="field-label" style="margin-top:10px;">Варіант 1 — вставити посилання (Google Drive, YouTube тощо)</label>
       <div class="row">
@@ -541,19 +550,36 @@ document.addEventListener('change', async (e) => {
     if (!file) return;
     const statusEl = document.getElementById('videoStatus');
     if (file.size > 50 * 1024 * 1024){
-      statusEl.textContent = 'Файл більший за 50 МБ — використай посилання (Варіант 1) замість завантаження.';
+      statusEl.textContent = 'Файл більший за 50 МБ (' + (file.size/1024/1024).toFixed(1) + ' МБ) — використай посилання (Варіант 1) замість завантаження.';
       return;
     }
-    statusEl.textContent = 'Завантаження відео...';
-    const safeName = sanitizeFileName(file.name);
-    const path = `${state.lessonId}/${Date.now()}_${safeName}`;
-    const { error } = await sb.storage.from('lesson-videos').upload(path, file, { upsert: true });
-    if (error){ statusEl.textContent = 'Помилка: ' + error.message; console.error(error); return; }
-    const { data: pub } = sb.storage.from('lesson-videos').getPublicUrl(path);
-    await sb.from('lessons').update({ video_url: pub.publicUrl }).eq('id', state.lessonId);
-    statusEl.textContent = 'Відео завантажено ✓';
-    toast('Відео додано');
-    renderLesson();
+    statusEl.textContent = `Завантаження відео (${(file.size/1024/1024).toFixed(1)} МБ)...`;
+    try {
+      const safeName = sanitizeFileName(file.name);
+      const path = `${state.lessonId}/${Date.now()}_${safeName}`;
+      const { error } = await sb.storage.from('lesson-videos').upload(path, file, { upsert: true });
+      if (error){
+        statusEl.textContent = 'Помилка: ' + error.message;
+        alert('Не вдалося завантажити відео:\n' + error.message);
+        console.error(error);
+        return;
+      }
+      const { data: pub } = sb.storage.from('lesson-videos').getPublicUrl(path);
+      const { error: dbError } = await sb.from('lessons').update({ video_url: pub.publicUrl }).eq('id', state.lessonId);
+      if (dbError){
+        statusEl.textContent = 'Помилка збереження в базі: ' + dbError.message;
+        alert('Відео завантажилось, але не зберіглось в базі:\n' + dbError.message);
+        console.error(dbError);
+        return;
+      }
+      statusEl.textContent = 'Відео завантажено ✓';
+      toast('Відео додано');
+      renderLesson();
+    } catch (ex){
+      statusEl.textContent = 'Неочікувана помилка: ' + ex.message;
+      alert('Неочікувана помилка при завантаженні відео:\n' + ex.message);
+      console.error(ex);
+    }
   }
 
   if (e.target.id === 'imageFile'){
