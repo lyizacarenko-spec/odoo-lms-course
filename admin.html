@@ -51,27 +51,15 @@
     background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
     padding:18px; margin-bottom:12px;
   }
-  .list-item{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:12px 14px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px;
-    background:var(--panel); cursor:pointer;
-  }
-  .list-item:hover{border-color:var(--teal);}
-  .list-item .title{font-size:14px; font-weight:600;}
-  .list-item .meta{font-size:12px; color:var(--ink-soft);}
   .back-link{
     display:inline-flex; align-items:center; gap:6px; color:var(--ink-soft); font-size:13px;
     background:none; border:none; cursor:pointer; padding:0; margin-bottom:16px;
   }
   h1.page-title{font-size:22px; margin:0 0 18px;}
   h2.section-title{font-size:15px; margin:24px 0 10px;}
-  .badge{
-    font-size:11px; font-weight:700; text-transform:uppercase; padding:3px 8px;
-    border-radius:5px; background:var(--amber); color:#fff; display:inline-block;
-  }
   .add-form{border:1px dashed var(--line); border-radius:8px; padding:16px; margin-top:14px;}
   .thumb-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
-  .thumb-row img{width:70px; height:70px; object-fit:cover; border-radius:6px; border:1px solid var(--line);}
+  .thumb-row img{width:70px; height:70px; object-fit:cover; border-radius:6px; border:1px solid var(--line); cursor:pointer;}
   .upload-status{font-size:12px; color:var(--ink-soft); margin-top:4px;}
   .toast{
     position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
@@ -205,11 +193,71 @@ function doLogin(){
   }
 }
 
-// ---------- COURSES ----------
+function escAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
+
+// --- Санітизація імені файлу для Supabase Storage ---
+// Storage key не приймає кирилицю, пробіли та деякі символи — транслітеруємо/чистимо.
+function sanitizeFileName(name){
+  const dot = name.lastIndexOf('.');
+  const ext = dot >= 0 ? name.slice(dot) : '';
+  let base = dot >= 0 ? name.slice(0, dot) : name;
+
+  const map = {а:'a',б:'b',в:'v',г:'g',ґ:'g',д:'d',е:'e',є:'ie',ж:'zh',з:'z',и:'y',і:'i',ї:'i',
+    й:'i',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',
+    ч:'ch',ш:'sh',щ:'shch',ь:'',ю:'iu',я:'ia',ы:'y',э:'e',ъ:''};
+  base = base.toLowerCase().split('').map(ch => map[ch] !== undefined ? map[ch] : ch).join('');
+  base = base.replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!base) base = 'file';
+  return base + ext.toLowerCase().replace(/[^a-z0-9.]/g, '');
+}
+
+function getYoutubeId(url){
+  if (!url) return null;
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function getDriveId(url){
+  if (!url) return null;
+  const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+function isDirectVideo(url){
+  if (!url) return false;
+  return /supabase\.co\/storage/.test(url) || /\.(mp4|webm|mov)$/i.test(url);
+}
+
+function renderVideoPreview(url){
+  const yid = getYoutubeId(url);
+  if (yid){
+    return `<iframe width="100%" height="280" style="border-radius:8px;margin-bottom:8px;border:none;"
+      src="https://www.youtube.com/embed/${yid}" allowfullscreen></iframe>`;
+  }
+  const did = getDriveId(url);
+  if (did){
+    return `<iframe width="100%" height="280" style="border-radius:8px;margin-bottom:8px;border:none;"
+      src="https://drive.google.com/file/d/${did}/preview" allow="autoplay" allowfullscreen></iframe>`;
+  }
+  if (isDirectVideo(url)){
+    return `<video controls style="width:100%;border-radius:8px;margin-bottom:8px;"><source src="${url}"></video>`;
+  }
+  return `<div class="upload-status">Посилання збережено: <a href="${url}" target="_blank">${url}</a></div>`;
+}
+
+async function saveVideoUrl(){
+  const url = document.getElementById('videoUrlInput').value.trim();
+  const { error } = await sb.from('lessons').update({ video_url: url }).eq('id', state.lessonId);
+  if (error){ toast('Помилка збереження'); console.error(error); return; }
+  toast('Посилання на відео збережено');
+  renderLesson();
+}
+
+// ---------- COURSES (ВІДДІЛИ) ----------
 
 async function loadCourses(){
   const { data, error } = await sb.from('courses').select('*').order('order_index');
-  if (error){ toast('Помилка завантаження курсів'); console.error(error); return; }
+  if (error){ toast('Помилка завантаження відділів'); console.error(error); return; }
   state.courses = data;
 }
 
@@ -267,7 +315,7 @@ async function openCourse(id){
 
 async function loadLessons(courseId){
   const { data, error } = await sb.from('lessons').select('*').eq('course_id', courseId).order('order_index');
-  if (error){ toast('Помилка завантаження уроків'); console.error(error); return; }
+  if (error){ toast('Помилка завантаження кроків'); console.error(error); return; }
   state.lessons = data;
 }
 
@@ -331,50 +379,6 @@ function showAddStep(){
   document.getElementById('addStepForm').style.display = 'block';
 }
 
-function escAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
-
-function getYoutubeId(url){
-  if (!url) return null;
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  return m ? m[1] : null;
-}
-
-function getDriveId(url){
-  if (!url) return null;
-  const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  return m ? m[1] : null;
-}
-
-function isDirectVideo(url){
-  if (!url) return false;
-  return /supabase\.co\/storage/.test(url) || /\.(mp4|webm|mov)$/i.test(url);
-}
-
-function renderVideoPreview(url){
-  const yid = getYoutubeId(url);
-  if (yid){
-    return `<iframe width="100%" height="280" style="border-radius:8px;margin-bottom:8px;border:none;"
-      src="https://www.youtube.com/embed/${yid}" allowfullscreen></iframe>`;
-  }
-  const did = getDriveId(url);
-  if (did){
-    return `<iframe width="100%" height="280" style="border-radius:8px;margin-bottom:8px;border:none;"
-      src="https://drive.google.com/file/d/${did}/preview" allow="autoplay" allowfullscreen></iframe>`;
-  }
-  if (isDirectVideo(url)){
-    return `<video controls style="width:100%;border-radius:8px;margin-bottom:8px;"><source src="${url}"></video>`;
-  }
-  return `<div class="upload-status">Посилання збережено: <a href="${url}" target="_blank">${url}</a></div>`;
-}
-
-async function saveVideoUrl(){
-  const url = document.getElementById('videoUrlInput').value.trim();
-  const { error } = await sb.from('lessons').update({ video_url: url }).eq('id', state.lessonId);
-  if (error){ toast('Помилка збереження'); console.error(error); return; }
-  toast('Посилання на відео збережено');
-  renderLesson();
-}
-
 async function saveCourse(){
   const title = document.getElementById('courseTitle').value.trim();
   const description = document.getElementById('courseDesc').value.trim();
@@ -390,7 +394,7 @@ async function deleteCourse(){
   if (!confirm('Видалити відділ і всі його кроки та завдання? Це незворотньо.')) return;
   const { error } = await sb.from('courses').delete().eq('id', state.courseId);
   if (error){ toast('Помилка видалення'); console.error(error); return; }
-  toast('Курс видалено');
+  toast('Відділ видалено');
   backToCourses();
 }
 
@@ -412,7 +416,7 @@ function backToCourses(){
   render();
 }
 
-// ---------- LESSON ----------
+// ---------- LESSON (КРОК) ----------
 
 async function loadTasks(lessonId){
   const { data, error } = await sb.from('lesson_tasks').select('*').eq('lesson_id', lessonId).order('order_index');
@@ -453,7 +457,7 @@ async function renderLesson(){
 
       <label class="field-label" style="margin-top:10px;">Варіант 1 — вставити посилання (Google Drive, YouTube тощо)</label>
       <div class="row">
-        <input type="text" id="videoUrlInput" placeholder="https://youtube.com/watch?v=..." value="${isDirectVideo(lesson.video_url) ? '' : escAttr(lesson.video_url||'')}" />
+        <input type="text" id="videoUrlInput" placeholder="https://drive.google.com/..." value="${isDirectVideo(lesson.video_url) ? '' : escAttr(lesson.video_url||'')}" />
         <button class="btn small" onclick="saveVideoUrl()">Зберегти</button>
       </div>
 
@@ -536,8 +540,13 @@ document.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const statusEl = document.getElementById('videoStatus');
+    if (file.size > 50 * 1024 * 1024){
+      statusEl.textContent = 'Файл більший за 50 МБ — використай посилання (Варіант 1) замість завантаження.';
+      return;
+    }
     statusEl.textContent = 'Завантаження відео...';
-    const path = `${state.lessonId}/${Date.now()}_${file.name}`;
+    const safeName = sanitizeFileName(file.name);
+    const path = `${state.lessonId}/${Date.now()}_${safeName}`;
     const { error } = await sb.storage.from('lesson-videos').upload(path, file, { upsert: true });
     if (error){ statusEl.textContent = 'Помилка: ' + error.message; console.error(error); return; }
     const { data: pub } = sb.storage.from('lesson-videos').getPublicUrl(path);
@@ -555,7 +564,8 @@ document.addEventListener('change', async (e) => {
     const lesson = state.lessons.find(l => l.id === state.lessonId);
     let images = lesson.images || [];
     for (const file of files){
-      const path = `${state.lessonId}/${Date.now()}_${file.name}`;
+      const safeName = sanitizeFileName(file.name);
+      const path = `${state.lessonId}/${Date.now()}_${safeName}`;
       const { error } = await sb.storage.from('lesson-images').upload(path, file, { upsert: true });
       if (error){ statusEl.textContent = 'Помилка: ' + error.message; console.error(error); continue; }
       const { data: pub } = sb.storage.from('lesson-images').getPublicUrl(path);
