@@ -336,7 +336,9 @@ const userBar = document.getElementById('userBar');
 const userNameEl = document.getElementById('userName');
 
 let state = {
-  user: localStorage.getItem('lms_user') || null,
+  user: null,          // email авторизованого користувача (заповнюється з сесії)
+  session: null,
+  otpSentTo: null,
   courses: [],
   lessons: {},      // course_id -> lessons[]
   tasks: {},         // lesson_id -> tasks[]
@@ -346,9 +348,13 @@ let state = {
   currentLessonIdx: 0
 };
 
-function logout(){
-  localStorage.removeItem('lms_user');
+async function logout(){
+  await sb.auth.signOut();
   state.user = null;
+  state.session = null;
+  state.courses = [];
+  state.progress = {};
+  state.taskDone = {};
   render();
 }
 
@@ -461,6 +467,14 @@ function renderVideo(url){
 
 async function render(){
   if (!state.user){
+    const { data } = await sb.auth.getSession();
+    if (data.session){
+      state.session = data.session;
+      state.user = data.session.user.email;
+    }
+  }
+
+  if (!state.user){
     userBar.style.display = 'none';
     renderLogin();
     return;
@@ -482,26 +496,61 @@ async function render(){
 }
 
 function renderLogin(){
+  if (state.otpSentTo){
+    app.innerHTML = `
+      <div class="login-wrap">
+        <div class="login-card">
+          <h1>Перевір пошту</h1>
+          <p>Ми надіслали код на ${state.otpSentTo}. Введи його нижче.</p>
+          <input type="text" id="otpInput" placeholder="6-значний код" inputmode="numeric" />
+          <button onclick="doVerifyOtp()">Підтвердити</button>
+          <button style="background:none;color:var(--teal);margin-top:8px;font-weight:400;" onclick="resetLogin()">← Ввести інший email</button>
+        </div>
+      </div>`;
+    document.getElementById('otpInput').addEventListener('keydown', e => { if (e.key==='Enter') doVerifyOtp(); });
+    return;
+  }
   app.innerHTML = `
     <div class="login-wrap">
       <div class="login-card">
         <h1>Курс новачка</h1>
-        <p>Введи своє ім'я, щоб почати навчання. Твій прогрес збережеться під цим іменем.</p>
-        <input type="text" id="nameInput" placeholder="Ім'я та прізвище" />
-        <button onclick="doLogin()">Почати</button>
+        <p>Введи свою робочу пошту — надішлемо код для входу. Прогрес збережеться під нею.</p>
+        <input type="email" id="emailInput" placeholder="ім'я@ikorkashop.com" />
+        <button onclick="doSendOtp()">Отримати код</button>
       </div>
     </div>
   `;
-  document.getElementById('nameInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-  });
+  document.getElementById('emailInput').addEventListener('keydown', e => { if (e.key==='Enter') doSendOtp(); });
 }
 
-function doLogin(){
-  const val = document.getElementById('nameInput').value.trim();
-  if (!val) return;
-  state.user = val;
-  localStorage.setItem('lms_user', val);
+function resetLogin(){
+  state.otpSentTo = null;
+  render();
+}
+
+async function doSendOtp(){
+  const email = document.getElementById('emailInput').value.trim();
+  if (!email) return;
+  const { error } = await sb.auth.signInWithOtp({ email });
+  if (error){
+    alert('Не вдалося надіслати код: ' + error.message);
+    return;
+  }
+  state.otpSentTo = email;
+  render();
+}
+
+async function doVerifyOtp(){
+  const token = document.getElementById('otpInput').value.trim();
+  if (!token) return;
+  const { data, error } = await sb.auth.verifyOtp({ email: state.otpSentTo, token, type: 'email' });
+  if (error){
+    alert('Невірний або прострочений код: ' + error.message);
+    return;
+  }
+  state.session = data.session;
+  state.user = data.user.email;
+  state.otpSentTo = null;
   render();
 }
 
