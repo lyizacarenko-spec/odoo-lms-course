@@ -7,311 +7,104 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --ink:#1c2b2d;
-    --ink-soft:#4b5d5f;
-    --bg:#f6f4ee;
-    --panel:#ffffff;
-    --line:#e3ded2;
-    --teal:#1f4d47;
-    --teal-dark:#173a35;
-    --amber:#c98a3e;
-    --amber-soft:#f2e2c8;
-    --ok:#3c7a5c;
-    --radius:10px;
+    --ink:#1c2b2d; --ink-soft:#4b5d5f; --bg:#f6f4ee; --panel:#ffffff;
+    --line:#e3ded2; --teal:#1f4d47; --teal-dark:#173a35; --amber:#c98a3e;
+    --ok:#3c7a5c; --radius:10px;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box;}
-  body{
-    margin:0;
-    background:var(--bg);
-    color:var(--ink);
-    min-height:100vh;
-  }
+  body{margin:0;background:var(--bg);color:var(--ink);min-height:100vh;}
   header{
-    background:var(--teal);
-    color:#fff;
-    padding:18px 20px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    position:sticky;
-    top:0;
-    z-index:10;
+    background:var(--teal); color:#fff; padding:18px 20px;
+    display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10;
   }
-  header .brand{
-    font-weight:700;
-    font-size:17px;
-    letter-spacing:0.2px;
-  }
-  header .brand small{
-    display:block;
-    font-weight:400;
-    font-size:12px;
-    opacity:0.75;
-    margin-top:2px;
-  }
-  header .user{
-    font-size:13px;
-    opacity:0.9;
-    display:flex;
-    align-items:center;
-    gap:10px;
-  }
+  header .brand{font-weight:700; font-size:17px;}
+  header .brand small{display:block; font-weight:400; font-size:12px; opacity:0.75; margin-top:2px;}
+  header .user{font-size:13px; opacity:0.9; display:flex; align-items:center; gap:10px;}
   header .user button{
-    background:transparent;
-    border:1px solid rgba(255,255,255,0.4);
-    color:#fff;
-    border-radius:6px;
-    padding:5px 10px;
-    font-size:12px;
-    cursor:pointer;
+    background:transparent; border:1px solid rgba(255,255,255,0.4); color:#fff;
+    border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer;
   }
-  main{
-    max-width:760px;
-    margin:0 auto;
-    padding:24px 18px 80px;
-  }
-  /* --- LOGIN --- */
-  .login-wrap{
-    min-height:80vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
+  main{max-width:760px; margin:0 auto; padding:24px 18px 80px;}
+  .login-wrap{min-height:80vh; display:flex; align-items:center; justify-content:center;}
   .login-card{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:36px 32px;
-    max-width:380px;
-    width:100%;
-    text-align:center;
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:36px 32px; max-width:380px; width:100%; text-align:center;
   }
-  .login-card h1{
-    font-size:20px;
-    margin:0 0 6px;
-  }
-  .login-card p{
-    color:var(--ink-soft);
-    font-size:14px;
-    margin:0 0 22px;
-  }
+  .login-card h1{font-size:20px; margin:0 0 6px;}
+  .login-card p{color:var(--ink-soft); font-size:14px; margin:0 0 22px;}
   .login-card input{
-    width:100%;
-    padding:12px 14px;
-    border:1px solid var(--line);
-    border-radius:8px;
-    font-size:15px;
-    margin-bottom:14px;
+    width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:8px;
+    font-size:15px; margin-bottom:14px;
   }
   .login-card button{
-    width:100%;
-    padding:12px;
-    background:var(--teal);
-    color:#fff;
-    border:none;
-    border-radius:8px;
-    font-size:15px;
-    font-weight:600;
-    cursor:pointer;
+    width:100%; padding:12px; background:var(--teal); color:#fff; border:none;
+    border-radius:8px; font-size:15px; font-weight:600; cursor:pointer;
   }
   .login-card button:hover{background:var(--teal-dark);}
-  /* --- COURSE LIST --- */
-  .course-card{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:22px;
-    margin-bottom:16px;
-    cursor:pointer;
-    transition:border-color .15s;
+  .crumbs{font-size:12px; color:var(--ink-soft); margin-bottom:4px;}
+  .card-item{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px; margin-bottom:16px; cursor:pointer; transition:border-color .15s;
   }
-  .course-card:hover{border-color:var(--teal);}
-  .course-card .num{
-    font-size:12px;
-    letter-spacing:1px;
-    color:var(--amber);
-    font-weight:700;
-    text-transform:uppercase;
-  }
-  .course-card h2{
-    margin:6px 0 8px;
-    font-size:19px;
-  }
-  .course-card p{
-    color:var(--ink-soft);
-    font-size:14px;
-    margin:0 0 14px;
-    line-height:1.5;
-  }
-  .progress-bar{
-    height:6px;
-    background:var(--line);
-    border-radius:4px;
-    overflow:hidden;
-  }
-  .progress-bar > div{
-    height:100%;
-    background:var(--ok);
-  }
-  .progress-label{
-    font-size:12px;
-    color:var(--ink-soft);
-    margin-top:6px;
-  }
-  /* --- LESSON LIST --- */
+  .card-item:hover{border-color:var(--teal);}
+  .card-item .num{font-size:12px; letter-spacing:1px; color:var(--amber); font-weight:700; text-transform:uppercase;}
+  .card-item h2{margin:6px 0 8px; font-size:19px;}
+  .card-item p{color:var(--ink-soft); font-size:14px; margin:0 0 14px; line-height:1.5;}
+  .progress-bar{height:6px; background:var(--line); border-radius:4px; overflow:hidden;}
+  .progress-bar > div{height:100%; background:var(--ok);}
+  .progress-label{font-size:12px; color:var(--ink-soft); margin-top:6px;}
   .back-link{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    color:var(--ink-soft);
-    font-size:13px;
-    text-decoration:none;
-    margin-bottom:18px;
-    cursor:pointer;
-    border:none;
-    background:none;
-    padding:0;
+    display:inline-flex; align-items:center; gap:6px; color:var(--ink-soft); font-size:13px;
+    text-decoration:none; margin-bottom:18px; cursor:pointer; border:none; background:none; padding:0;
   }
   .lesson-row{
-    display:flex;
-    align-items:center;
-    gap:14px;
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:8px;
-    padding:14px 16px;
-    margin-bottom:10px;
-    cursor:pointer;
+    display:flex; align-items:center; gap:14px; background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; padding:14px 16px; margin-bottom:10px; cursor:pointer;
   }
   .lesson-row:hover{border-color:var(--teal);}
   .lesson-check{
-    width:26px;
-    height:26px;
-    border-radius:50%;
-    border:2px solid var(--line);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:13px;
-    color:var(--ink-soft);
-    flex-shrink:0;
+    width:26px; height:26px; border-radius:50%; border:2px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--ink-soft); flex-shrink:0;
   }
-  .lesson-check.done{
-    background:var(--ok);
-    border-color:var(--ok);
-    color:#fff;
-  }
+  .lesson-check.done{background:var(--ok); border-color:var(--ok); color:#fff;}
   .lesson-title{font-size:15px; font-weight:500;}
-  /* --- LESSON PAGE --- */
-  .lesson-header{
-    margin-bottom:18px;
+  .lesson-header{margin-bottom:18px;}
+  .lesson-header .eyebrow{font-size:12px; color:var(--amber); font-weight:700; letter-spacing:0.5px; text-transform:uppercase;}
+  .lesson-header h1{font-size:24px; margin:6px 0 0;}
+  .block-text{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:24px; font-size:15px; line-height:1.7; white-space:pre-wrap; margin-bottom:16px;
   }
-  .lesson-header .eyebrow{
-    font-size:12px;
-    color:var(--amber);
-    font-weight:700;
-    letter-spacing:0.5px;
-    text-transform:uppercase;
+  .block-image{margin-bottom:16px;}
+  .block-image img{
+    width:100%; max-height:420px; object-fit:cover; border-radius:var(--radius);
+    border:1px solid var(--line); cursor:pointer; display:block;
   }
-  .lesson-header h1{
-    font-size:24px;
-    margin:6px 0 0;
-  }
-  .video-placeholder{
-    background:var(--panel);
-    border:1px dashed var(--line);
-    border-radius:var(--radius);
-    padding:40px 20px;
-    text-align:center;
-    color:var(--ink-soft);
-    font-size:13px;
-    margin-bottom:20px;
-  }
-  .lesson-text{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:24px;
-    font-size:15px;
-    line-height:1.7;
-    white-space:pre-wrap;
-    margin-bottom:20px;
-  }
-  .lesson-images{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-bottom:20px;
-  }
-  .lesson-images img{
-    width:140px;
-    height:140px;
-    object-fit:cover;
-    border-radius:8px;
-    border:1px solid var(--line);
-    cursor:pointer;
-  }
-  .tasks{
-    margin-bottom:24px;
-  }
+  .block-image .caption{font-size:13px; color:var(--ink-soft); margin-top:6px; text-align:center;}
+  .block-video, .block-audio{margin-bottom:16px;}
+  .tasks{margin-bottom:24px;}
   .task{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-left:4px solid var(--amber);
-    border-radius:8px;
-    padding:16px 18px;
-    margin-bottom:10px;
+    background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--amber);
+    border-radius:8px; padding:16px 18px; margin-bottom:10px;
   }
   .task.self_check{border-left-color:#6b7fd7;}
   .task.practical{border-left-color:var(--amber);}
   .task.homework{border-left-color:#a15fc9;}
   .task .tag{
-    font-size:11px;
-    font-weight:700;
-    text-transform:uppercase;
-    letter-spacing:0.5px;
-    color:var(--ink-soft);
-    margin-bottom:6px;
-    display:block;
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
+    color:var(--ink-soft); margin-bottom:6px; display:block;
   }
   .task p{margin:0 0 10px; font-size:14px; line-height:1.6; white-space:pre-wrap;}
-  .task label{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    font-size:13px;
-    color:var(--ink-soft);
-    cursor:pointer;
-  }
-  .lesson-nav{
-    display:flex;
-    justify-content:space-between;
-    gap:10px;
-    margin-top:24px;
-  }
+  .task label{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-soft); cursor:pointer;}
+  .lesson-nav{display:flex; justify-content:space-between; gap:10px; margin-top:24px;}
   .lesson-nav button{
-    flex:1;
-    padding:14px;
-    border-radius:8px;
-    border:1px solid var(--line);
-    background:var(--panel);
-    font-size:14px;
-    cursor:pointer;
+    flex:1; padding:14px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel); font-size:14px; cursor:pointer;
   }
-  .lesson-nav button.primary{
-    background:var(--teal);
-    color:#fff;
-    border-color:var(--teal);
-    font-weight:600;
-  }
+  .lesson-nav button.primary{background:var(--teal); color:#fff; border-color:var(--teal); font-weight:600;}
   .lesson-nav button:disabled{opacity:0.4; cursor:default;}
-  .loading, .empty{
-    text-align:center;
-    color:var(--ink-soft);
-    padding:60px 20px;
-    font-size:14px;
-  }
+  .loading, .empty{text-align:center; color:var(--ink-soft); padding:60px 20px; font-size:14px;}
 </style>
 </head>
 <body>
@@ -336,34 +129,39 @@ const userBar = document.getElementById('userBar');
 const userNameEl = document.getElementById('userName');
 
 let state = {
-  user: null,          // email авторизованого користувача (заповнюється з сесії)
+  user: null,
   session: null,
   otpSentTo: null,
-  courses: [],
-  lessons: {},      // course_id -> lessons[]
-  tasks: {},         // lesson_id -> tasks[]
-  progress: {},       // lesson_id -> status
-  taskDone: {},       // task_id -> bool
+  departments: [],
+  courses: {},        // department_id -> courses[]
+  lessons: {},         // course_id -> lessons[]
+  tasks: {},
+  progress: {},
+  taskDone: {},
+  currentDepartment: null,
   currentCourse: null,
   currentLessonIdx: 0
 };
 
 async function logout(){
   await sb.auth.signOut();
-  state.user = null;
-  state.session = null;
-  state.courses = [];
-  state.progress = {};
-  state.taskDone = {};
+  state.user = null; state.session = null;
+  state.departments = []; state.progress = {}; state.taskDone = {};
   render();
 }
 
-async function loadCourses(){
-  const { data, error } = await sb.from('courses').select('*').eq('is_active', true).order('order_index');
+async function loadDepartments(){
+  const { data, error } = await sb.from('departments').select('*').eq('is_active', true).order('order_index');
   if (error) { console.error(error); return; }
-  state.courses = data;
+  state.departments = data;
 }
-
+async function loadCourses(deptId){
+  if (state.courses[deptId]) return state.courses[deptId];
+  const { data, error } = await sb.from('courses').select('*').eq('department_id', deptId).eq('is_active', true).order('order_index');
+  if (error) { console.error(error); return []; }
+  state.courses[deptId] = data;
+  return data;
+}
 async function loadLessons(courseId){
   if (state.lessons[courseId]) return state.lessons[courseId];
   const { data, error } = await sb.from('lessons').select('*').eq('course_id', courseId).order('order_index');
@@ -371,7 +169,6 @@ async function loadLessons(courseId){
   state.lessons[courseId] = data;
   return data;
 }
-
 async function loadTasks(lessonId){
   if (state.tasks[lessonId]) return state.tasks[lessonId];
   const { data, error } = await sb.from('lesson_tasks').select('*').eq('lesson_id', lessonId).order('order_index');
@@ -379,56 +176,34 @@ async function loadTasks(lessonId){
   state.tasks[lessonId] = data;
   return data;
 }
-
 async function loadProgress(){
   if (!state.user) return;
   const { data, error } = await sb.from('user_progress').select('*').eq('user_identifier', state.user);
   if (error) { console.error(error); return; }
   data.forEach(p => state.progress[p.lesson_id] = p.status);
-
   const { data: tc, error: e2 } = await sb.from('task_completion').select('*').eq('user_identifier', state.user);
   if (e2) { console.error(e2); return; }
   tc.forEach(t => state.taskDone[t.task_id] = t.is_done);
 }
-
 async function markLessonDone(lessonId){
   state.progress[lessonId] = 'done';
   await sb.from('user_progress').upsert({
-    user_identifier: state.user,
-    lesson_id: lessonId,
-    status: 'done',
-    completed_at: new Date().toISOString()
+    user_identifier: state.user, lesson_id: lessonId, status: 'done', completed_at: new Date().toISOString()
   }, { onConflict: 'user_identifier,lesson_id' });
 }
-
 async function markLessonStarted(lessonId){
   if (state.progress[lessonId]) return;
   state.progress[lessonId] = 'in_progress';
   await sb.from('user_progress').upsert({
-    user_identifier: state.user,
-    lesson_id: lessonId,
-    status: 'in_progress',
-    started_at: new Date().toISOString()
+    user_identifier: state.user, lesson_id: lessonId, status: 'in_progress', started_at: new Date().toISOString()
   }, { onConflict: 'user_identifier,lesson_id' });
 }
-
 async function toggleTask(taskId, checked){
   state.taskDone[taskId] = checked;
   await sb.from('task_completion').upsert({
-    user_identifier: state.user,
-    task_id: taskId,
-    is_done: checked,
+    user_identifier: state.user, task_id: taskId, is_done: checked,
     completed_at: checked ? new Date().toISOString() : null
   }, { onConflict: 'user_identifier,task_id' });
-}
-
-// ---------- ROUTING / RENDER ----------
-
-function courseProgress(courseId){
-  const lessons = state.lessons[courseId] || [];
-  if (!lessons.length) return {done:0, total:0};
-  const done = lessons.filter(l => state.progress[l.id] === 'done').length;
-  return {done, total: lessons.length};
 }
 
 function taskTypeLabel(type){
@@ -437,43 +212,40 @@ function taskTypeLabel(type){
   if (type === 'homework') return 'Домашнє завдання';
   return type;
 }
-
 function getYoutubeId(url){
   if (!url) return null;
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : null;
 }
-
 function getDriveId(url){
   if (!url) return null;
   const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   return m ? m[1] : null;
 }
-
-function renderVideo(url){
-  if (!url) return `<div class="video-placeholder">Відео для цього уроку буде додано пізніше</div>`;
+function renderVideoBlock(url){
+  if (!url) return '';
   const yid = getYoutubeId(url);
-  if (yid){
-    return `<iframe width="100%" height="360" style="border-radius:10px;margin-bottom:20px;border:none;"
-      src="https://www.youtube.com/embed/${yid}" allowfullscreen></iframe>`;
-  }
+  if (yid) return `<div class="block-video"><iframe width="100%" height="360" style="border-radius:10px;border:none;" src="https://www.youtube.com/embed/${yid}" allowfullscreen></iframe></div>`;
   const did = getDriveId(url);
-  if (did){
-    return `<iframe width="100%" height="360" style="border-radius:10px;margin-bottom:20px;border:none;"
-      src="https://drive.google.com/file/d/${did}/preview" allow="autoplay" allowfullscreen></iframe>`;
-  }
-  return `<video controls style="width:100%;border-radius:10px;margin-bottom:20px;"><source src="${url}"></video>`;
+  if (did) return `<div class="block-video"><iframe width="100%" height="360" style="border-radius:10px;border:none;" src="https://drive.google.com/file/d/${did}/preview" allowfullscreen></iframe></div>`;
+  return `<div class="block-video"><video controls style="width:100%;border-radius:10px;"><source src="${url}"></video></div>`;
+}
+function renderContentBlocks(blocks){
+  if (!blocks || !blocks.length) return '';
+  return blocks.map(b => {
+    if (b.type === 'text' && b.text) return `<div class="block-text">${b.text}</div>`;
+    if (b.type === 'video' && b.url) return renderVideoBlock(b.url);
+    if (b.type === 'audio' && b.url) return `<div class="block-audio"><audio controls style="width:100%;"><source src="${b.url}"></audio></div>`;
+    if (b.type === 'image' && b.url) return `<div class="block-image"><img src="${b.url}" onclick="window.open('${b.url}','_blank')" />${b.caption ? `<div class="caption">${b.caption}</div>` : ''}</div>`;
+    return '';
+  }).join('');
 }
 
 async function render(){
   if (!state.user){
     const { data } = await sb.auth.getSession();
-    if (data.session){
-      state.session = data.session;
-      state.user = data.session.user.email;
-    }
+    if (data.session){ state.session = data.session; state.user = data.session.user.email; }
   }
-
   if (!state.user){
     userBar.style.display = 'none';
     renderLogin();
@@ -482,13 +254,15 @@ async function render(){
   userBar.style.display = 'flex';
   userNameEl.textContent = state.user;
 
-  if (!state.courses.length){
+  if (!state.departments.length){
     app.innerHTML = '<div class="loading">Завантаження...</div>';
-    await loadCourses();
+    await loadDepartments();
     await loadProgress();
   }
 
-  if (!state.currentCourse){
+  if (!state.currentDepartment){
+    renderDepartmentList();
+  } else if (!state.currentCourse){
     renderCourseList();
   } else {
     renderLessonPage();
@@ -498,81 +272,101 @@ async function render(){
 function renderLogin(){
   if (state.otpSentTo){
     app.innerHTML = `
-      <div class="login-wrap">
-        <div class="login-card">
-          <h1>Перевір пошту</h1>
-          <p>Ми надіслали код на ${state.otpSentTo}. Введи його нижче.</p>
-          <input type="text" id="otpInput" placeholder="6-значний код" inputmode="numeric" />
-          <button onclick="doVerifyOtp()">Підтвердити</button>
-          <button style="background:none;color:var(--teal);margin-top:8px;font-weight:400;" onclick="resetLogin()">← Ввести інший email</button>
-        </div>
-      </div>`;
+      <div class="login-wrap"><div class="login-card">
+        <h1>Перевір пошту</h1>
+        <p>Ми надіслали код на ${state.otpSentTo}. Введи його нижче.</p>
+        <input type="text" id="otpInput" placeholder="6-значний код" inputmode="numeric" />
+        <button onclick="doVerifyOtp()">Підтвердити</button>
+        <button style="background:none;color:var(--teal);margin-top:8px;font-weight:400;" onclick="resetLogin()">← Ввести інший email</button>
+      </div></div>`;
     document.getElementById('otpInput').addEventListener('keydown', e => { if (e.key==='Enter') doVerifyOtp(); });
     return;
   }
   app.innerHTML = `
-    <div class="login-wrap">
-      <div class="login-card">
-        <h1>Курс новачка</h1>
-        <p>Введи свою робочу пошту — надішлемо код для входу. Прогрес збережеться під нею.</p>
-        <input type="email" id="emailInput" placeholder="ім'я@ikorkashop.com" />
-        <button onclick="doSendOtp()">Отримати код</button>
-      </div>
-    </div>
-  `;
+    <div class="login-wrap"><div class="login-card">
+      <h1>Курс новачка</h1>
+      <p>Введи свою пошту — надішлемо код для входу. Прогрес збережеться під нею.</p>
+      <input type="email" id="emailInput" placeholder="твоя@пошта.com" />
+      <button onclick="doSendOtp()">Отримати код</button>
+    </div></div>`;
   document.getElementById('emailInput').addEventListener('keydown', e => { if (e.key==='Enter') doSendOtp(); });
 }
-
-function resetLogin(){
-  state.otpSentTo = null;
-  render();
-}
-
+function resetLogin(){ state.otpSentTo = null; render(); }
 async function doSendOtp(){
   const email = document.getElementById('emailInput').value.trim();
   if (!email) return;
   const { error } = await sb.auth.signInWithOtp({ email });
-  if (error){
-    alert('Не вдалося надіслати код: ' + error.message);
-    return;
-  }
+  if (error){ alert('Не вдалося надіслати код: ' + error.message); return; }
   state.otpSentTo = email;
   render();
 }
-
 async function doVerifyOtp(){
   const token = document.getElementById('otpInput').value.trim();
   if (!token) return;
   const { data, error } = await sb.auth.verifyOtp({ email: state.otpSentTo, token, type: 'email' });
-  if (error){
-    alert('Невірний або прострочений код: ' + error.message);
-    return;
-  }
+  if (error){ alert('Невірний або прострочений код: ' + error.message); return; }
   state.session = data.session;
   state.user = data.user.email;
   state.otpSentTo = null;
   render();
 }
 
-async function renderCourseList(){
+// ---------- РІВЕНЬ 1: ВІДДІЛИ ----------
+
+function renderDepartmentList(){
   let html = '';
-  for (const course of state.courses){
+  state.departments.forEach(d => {
+    html += `
+      <div class="card-item" onclick="openDepartment('${d.id}')">
+        ${d.cover_image ? `<img src="${d.cover_image}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:10px;" />` : ''}
+        <div class="num">Відділ</div>
+        <h2>${d.title}</h2>
+        <p>${d.description || ''}</p>
+      </div>`;
+  });
+  app.innerHTML = html || '<div class="empty">Курсів поки немає.</div>';
+}
+async function openDepartment(id){
+  state.currentDepartment = id;
+  app.innerHTML = '<div class="loading">Завантаження...</div>';
+  await loadCourses(id);
+  render();
+}
+function backToDepartments(){
+  state.currentDepartment = null;
+  render();
+}
+
+// ---------- РІВЕНЬ 2: КУРСИ ----------
+
+function courseProgress(courseId){
+  const lessons = state.lessons[courseId] || [];
+  if (!lessons.length) return {done:0, total:0};
+  const done = lessons.filter(l => state.progress[l.id] === 'done').length;
+  return {done, total: lessons.length};
+}
+async function renderCourseList(){
+  const dept = state.departments.find(d => d.id === state.currentDepartment);
+  const courses = state.courses[state.currentDepartment] || [];
+  let html = `<button class="back-link" onclick="backToDepartments()">← Усі відділи</button>
+    <div class="crumbs">${dept.title}</div>
+    <h1 style="margin-top:0;">Курси</h1>`;
+  for (const course of courses){
     await loadLessons(course.id);
     const p = courseProgress(course.id);
     const pct = p.total ? Math.round(p.done / p.total * 100) : 0;
     html += `
-      <div class="course-card" onclick="openCourse('${course.id}')">
-        <div class="num">Курс ${course.order_index}</div>
+      <div class="card-item" onclick="openCourse('${course.id}')">
+        ${course.cover_image ? `<img src="${course.cover_image}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:10px;" />` : ''}
+        <div class="num">Курс</div>
         <h2>${course.title}</h2>
         <p>${course.description || ''}</p>
         <div class="progress-bar"><div style="width:${pct}%"></div></div>
-        <div class="progress-label">${p.done} з ${p.total} уроків пройдено</div>
-      </div>
-    `;
+        <div class="progress-label">${p.done} з ${p.total} кроків пройдено</div>
+      </div>`;
   }
   app.innerHTML = html;
 }
-
 async function openCourse(courseId){
   state.currentCourse = courseId;
   state.currentLessonIdx = 0;
@@ -580,9 +374,15 @@ async function openCourse(courseId){
   await loadLessons(courseId);
   renderLessonList();
 }
+function backToCourses(){
+  state.currentCourse = null;
+  render();
+}
+
+// ---------- РІВЕНЬ 3: КРОКИ ----------
 
 function renderLessonList(){
-  const course = state.courses.find(c => c.id === state.currentCourse);
+  const course = (state.courses[state.currentDepartment]||[]).find(c => c.id === state.currentCourse);
   const lessons = state.lessons[state.currentCourse];
   let html = `<button class="back-link" onclick="backToCourses()">← Усі курси</button>
     <h1 style="margin-top:0;">${course.title}</h1>`;
@@ -592,17 +392,10 @@ function renderLessonList(){
       <div class="lesson-row" onclick="openLesson(${idx})">
         <div class="lesson-check ${done ? 'done' : ''}">${done ? '✓' : idx+1}</div>
         <div class="lesson-title">${l.title}</div>
-      </div>
-    `;
+      </div>`;
   });
   app.innerHTML = html;
 }
-
-function backToCourses(){
-  state.currentCourse = null;
-  render();
-}
-
 async function openLesson(idx){
   state.currentLessonIdx = idx;
   const lesson = state.lessons[state.currentCourse][idx];
@@ -617,14 +410,6 @@ function renderLessonPage(){
   const lesson = lessons[idx];
   const tasks = state.tasks[lesson.id] || [];
   const done = state.progress[lesson.id] === 'done';
-  const images = lesson.images || [];
-
-  let imagesHtml = '';
-  if (images.length){
-    imagesHtml = '<div class="lesson-images">' + images.map(url =>
-      `<img src="${url}" onclick="window.open('${url}','_blank')" />`
-    ).join('') + '</div>';
-  }
 
   let tasksHtml = '';
   if (tasks.length){
@@ -633,35 +418,30 @@ function renderLessonPage(){
         <span class="tag">${taskTypeLabel(t.task_type)}</span>
         <p>${t.task_text}</p>
         <label>
-          <input type="checkbox" ${state.taskDone[t.id] ? 'checked' : ''}
-            onchange="toggleTask('${t.id}', this.checked)" />
+          <input type="checkbox" ${state.taskDone[t.id] ? 'checked' : ''} onchange="toggleTask('${t.id}', this.checked)" />
           Виконано
         </label>
-      </div>
-    `).join('') + '</div>';
+      </div>`).join('') + '</div>';
   }
 
+  const contentHtml = renderContentBlocks(lesson.content_blocks) ||
+    `<div class="block-text">${lesson.transcript_text || lesson.description || 'Контент буде додано пізніше.'}</div>`;
+
   app.innerHTML = `
-    <button class="back-link" onclick="renderLessonList()">← До списку уроків</button>
+    <button class="back-link" onclick="renderLessonList()">← До списку кроків</button>
     <div class="lesson-header">
-      <div class="eyebrow">Урок ${idx+1} з ${lessons.length}</div>
+      <div class="eyebrow">Крок ${idx+1} з ${lessons.length}</div>
       <h1>${lesson.title}</h1>
     </div>
-    ${renderVideo(lesson.video_url)}
-    ${lesson.audio_url ? `<audio controls style="width:100%;margin-bottom:20px;"><source src="${lesson.audio_url}"></audio>` : ''}
-    ${imagesHtml}
-    <div class="lesson-text">${lesson.transcript_text || lesson.description || ''}</div>
+    ${contentHtml}
     ${tasksHtml}
     <div class="lesson-nav">
       <button ${idx === 0 ? 'disabled' : ''} onclick="openLesson(${idx-1})">← Попередній</button>
       ${done
         ? `<button class="primary" ${idx === lessons.length-1 ? 'disabled' : ''} onclick="openLesson(${idx+1})">Наступний →</button>`
-        : `<button class="primary" onclick="completeLesson()">Позначити пройденим</button>`
-      }
-    </div>
-  `;
+        : `<button class="primary" onclick="completeLesson()">Позначити пройденим</button>`}
+    </div>`;
 }
-
 async function completeLesson(){
   const lesson = state.lessons[state.currentCourse][state.currentLessonIdx];
   await markLessonDone(lesson.id);
