@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Курс новачка — Ikorka Shop</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#1c2b2d;
+    --ink-soft:#4b5d5f;
+    --bg:#f6f4ee;
+    --panel:#ffffff;
+    --line:#e3ded2;
+    --teal:#1f4d47;
+    --teal-dark:#173a35;
+    --amber:#c98a3e;
+    --amber-soft:#f2e2c8;
+    --ok:#3c7a5c;
+    --radius:10px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  header{
+    background:var(--teal);
+    color:#fff;
+    padding:18px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  header .brand{
+    font-weight:700;
+    font-size:17px;
+    letter-spacing:0.2px;
+  }
+  header .brand small{
+    display:block;
+    font-weight:400;
+    font-size:12px;
+    opacity:0.75;
+    margin-top:2px;
+  }
+  header .user{
+    font-size:13px;
+    opacity:0.9;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  header .user button{
+    background:transparent;
+    border:1px solid rgba(255,255,255,0.4);
+    color:#fff;
+    border-radius:6px;
+    padding:5px 10px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  main{
+    max-width:760px;
+    margin:0 auto;
+    padding:24px 18px 80px;
+  }
+  /* --- LOGIN --- */
+  .login-wrap{
+    min-height:80vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .login-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:36px 32px;
+    max-width:380px;
+    width:100%;
+    text-align:center;
+  }
+  .login-card h1{
+    font-size:20px;
+    margin:0 0 6px;
+  }
+  .login-card p{
+    color:var(--ink-soft);
+    font-size:14px;
+    margin:0 0 22px;
+  }
+  .login-card input{
+    width:100%;
+    padding:12px 14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-size:15px;
+    margin-bottom:14px;
+  }
+  .login-card button{
+    width:100%;
+    padding:12px;
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .login-card button:hover{background:var(--teal-dark);}
+  /* --- COURSE LIST --- */
+  .course-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px;
+    margin-bottom:16px;
+    cursor:pointer;
+    transition:border-color .15s;
+  }
+  .course-card:hover{border-color:var(--teal);}
+  .course-card .num{
+    font-size:12px;
+    letter-spacing:1px;
+    color:var(--amber);
+    font-weight:700;
+    text-transform:uppercase;
+  }
+  .course-card h2{
+    margin:6px 0 8px;
+    font-size:19px;
+  }
+  .course-card p{
+    color:var(--ink-soft);
+    font-size:14px;
+    margin:0 0 14px;
+    line-height:1.5;
+  }
+  .progress-bar{
+    height:6px;
+    background:var(--line);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .progress-bar > div{
+    height:100%;
+    background:var(--ok);
+  }
+  .progress-label{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+  /* --- LESSON LIST --- */
+  .back-link{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    color:var(--ink-soft);
+    font-size:13px;
+    text-decoration:none;
+    margin-bottom:18px;
+    cursor:pointer;
+    border:none;
+    background:none;
+    padding:0;
+  }
+  .lesson-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    cursor:pointer;
+  }
+  .lesson-row:hover{border-color:var(--teal);}
+  .lesson-check{
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    border:2px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+    color:var(--ink-soft);
+    flex-shrink:0;
+  }
+  .lesson-check.done{
+    background:var(--ok);
+    border-color:var(--ok);
+    color:#fff;
+  }
+  .lesson-title{font-size:15px; font-weight:500;}
+  /* --- LESSON PAGE --- */
+  .lesson-header{
+    margin-bottom:18px;
+  }
+  .lesson-header .eyebrow{
+    font-size:12px;
+    color:var(--amber);
+    font-weight:700;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+  }
+  .lesson-header h1{
+    font-size:24px;
+    margin:6px 0 0;
+  }
+  .video-placeholder{
+    background:var(--panel);
+    border:1px dashed var(--line);
+    border-radius:var(--radius);
+    padding:40px 20px;
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+    margin-bottom:20px;
+  }
+  .lesson-text{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px;
+    font-size:15px;
+    line-height:1.7;
+    white-space:pre-wrap;
+    margin-bottom:20px;
+  }
+  .lesson-images{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+  }
+  .lesson-images img{
+    width:140px;
+    height:140px;
+    object-fit:cover;
+    border-radius:8px;
+    border:1px solid var(--line);
+    cursor:pointer;
+  }
+  .tasks{
+    margin-bottom:24px;
+  }
+  .task{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-left:4px solid var(--amber);
+    border-radius:8px;
+    padding:16px 18px;
+    margin-bottom:10px;
+  }
+  .task.self_check{border-left-color:#6b7fd7;}
+  .task.practical{border-left-color:var(--amber);}
+  .task.homework{border-left-color:#a15fc9;}
+  .task .tag{
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+    display:block;
+  }
+  .task p{margin:0 0 10px; font-size:14px; line-height:1.6; white-space:pre-wrap;}
+  .task label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .lesson-nav{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:24px;
+  }
+  .lesson-nav button{
+    flex:1;
+    padding:14px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    font-size:14px;
+    cursor:pointer;
+  }
+  .lesson-nav button.primary{
+    background:var(--teal);
+    color:#fff;
+    border-color:var(--teal);
+    font-weight:600;
+  }
+  .lesson-nav button:disabled{opacity:0.4; cursor:default;}
+  .loading, .empty{
+    text-align:center;
+    color:var(--ink-soft);
+    padding:60px 20px;
+    font-size:14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Курс новачка<small>Ikorka Shop</small></div>
+  <div class="user" id="userBar" style="display:none;">
+    <span id="userName"></span>
+    <button onclick="logout()">Вийти</button>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<script>
+const SUPABASE_URL = "https://yctzcbaynycuibkqmwqd.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_pBkmNRVX61ELGcs1HqGV-Q_kBrVJWQA";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const app = document.getElementById('app');
+const userBar = document.getElementById('userBar');
+const userNameEl = document.getElementById('userName');
+
+let state = {
+  user: localStorage.getItem('lms_user') || null,
+  courses: [],
+  lessons: {},      // course_id -> lessons[]
+  tasks: {},         // lesson_id -> tasks[]
+  progress: {},       // lesson_id -> status
+  taskDone: {},       // task_id -> bool
+  currentCourse: null,
+  currentLessonIdx: 0
+};
+
+function logout(){
+  localStorage.removeItem('lms_user');
+  state.user = null;
+  render();
+}
+
+async function loadCourses(){
+  const { data, error } = await sb.from('courses').select('*').eq('is_active', true).order('order_index');
+  if (error) { console.error(error); return; }
+  state.courses = data;
+}
+
+async function loadLessons(courseId){
+  if (state.lessons[courseId]) return state.lessons[courseId];
+  const { data, error } = await sb.from('lessons').select('*').eq('course_id', courseId).order('order_index');
+  if (error) { console.error(error); return []; }
+  state.lessons[courseId] = data;
+  return data;
+}
+
+async function loadTasks(lessonId){
+  if (state.tasks[lessonId]) return state.tasks[lessonId];
+  const { data, error } = await sb.from('lesson_tasks').select('*').eq('lesson_id', lessonId).order('order_index');
+  if (error) { console.error(error); return []; }
+  state.tasks[lessonId] = data;
+  return data;
+}
+
+async function loadProgress(){
+  if (!state.user) return;
+  const { data, error } = await sb.from('user_progress').select('*').eq('user_identifier', state.user);
+  if (error) { console.error(error); return; }
+  data.forEach(p => state.progress[p.lesson_id] = p.status);
+
+  const { data: tc, error: e2 } = await sb.from('task_completion').select('*').eq('user_identifier', state.user);
+  if (e2) { console.error(e2); return; }
+  tc.forEach(t => state.taskDone[t.task_id] = t.is_done);
+}
+
+async function markLessonDone(lessonId){
+  state.progress[lessonId] = 'done';
+  await sb.from('user_progress').upsert({
+    user_identifier: state.user,
+    lesson_id: lessonId,
+    status: 'done',
+    completed_at: new Date().toISOString()
+  }, { onConflict: 'user_identifier,lesson_id' });
+}
+
+async function markLessonStarted(lessonId){
+  if (state.progress[lessonId]) return;
+  state.progress[lessonId] = 'in_progress';
+  await sb.from('user_progress').upsert({
+    user_identifier: state.user,
+    lesson_id: lessonId,
+    status: 'in_progress',
+    started_at: new Date().toISOString()
+  }, { onConflict: 'user_identifier,lesson_id' });
+}
+
+async function toggleTask(taskId, checked){
+  state.taskDone[taskId] = checked;
+  await sb.from('task_completion').upsert({
+    user_identifier: state.user,
+    task_id: taskId,
+    is_done: checked,
+    completed_at: checked ? new Date().toISOString() : null
+  }, { onConflict: 'user_identifier,task_id' });
+}
+
+// ---------- ROUTING / RENDER ----------
+
+function courseProgress(courseId){
+  const lessons = state.lessons[courseId] || [];
+  if (!lessons.length) return {done:0, total:0};
+  const done = lessons.filter(l => state.progress[l.id] === 'done').length;
+  return {done, total: lessons.length};
+}
+
+function taskTypeLabel(type){
+  if (type === 'self_check') return 'Питання на роздум';
+  if (type === 'practical') return 'Практика в Odoo';
+  if (type === 'homework') return 'Домашнє завдання';
+  return type;
+}
+
+function getYoutubeId(url){
+  if (!url) return null;
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function getDriveId(url){
+  if (!url) return null;
+  const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+function renderVideo(url){
+  if (!url) return `<div class="video-placeholder">Відео для цього уроку буде додано пізніше</div>`;
+  const yid = getYoutubeId(url);
+  if (yid){
+    return `<iframe width="100%" height="360" style="border-radius:10px;margin-bottom:20px;border:none;"
+      src="https://www.youtube.com/embed/${yid}" allowfullscreen></iframe>`;
+  }
+  const did = getDriveId(url);
+  if (did){
+    return `<iframe width="100%" height="360" style="border-radius:10px;margin-bottom:20px;border:none;"
+      src="https://drive.google.com/file/d/${did}/preview" allow="autoplay" allowfullscreen></iframe>`;
+  }
+  return `<video controls style="width:100%;border-radius:10px;margin-bottom:20px;"><source src="${url}"></video>`;
+}
+
+async function render(){
+  if (!state.user){
+    userBar.style.display = 'none';
+    renderLogin();
+    return;
+  }
+  userBar.style.display = 'flex';
+  userNameEl.textContent = state.user;
+
+  if (!state.courses.length){
+    app.innerHTML = '<div class="loading">Завантаження...</div>';
+    await loadCourses();
+    await loadProgress();
+  }
+
+  if (!state.currentCourse){
+    renderCourseList();
+  } else {
+    renderLessonPage();
+  }
+}
+
+function renderLogin(){
+  app.innerHTML = `
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>Курс новачка</h1>
+        <p>Введи своє ім'я, щоб почати навчання. Твій прогрес збережеться під цим іменем.</p>
+        <input type="text" id="nameInput" placeholder="Ім'я та прізвище" />
+        <button onclick="doLogin()">Почати</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('nameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+}
+
+function doLogin(){
+  const val = document.getElementById('nameInput').value.trim();
+  if (!val) return;
+  state.user = val;
+  localStorage.setItem('lms_user', val);
+  render();
+}
+
+async function renderCourseList(){
+  let html = '';
+  for (const course of state.courses){
+    await loadLessons(course.id);
+    const p = courseProgress(course.id);
+    const pct = p.total ? Math.round(p.done / p.total * 100) : 0;
+    html += `
+      <div class="course-card" onclick="openCourse('${course.id}')">
+        <div class="num">Курс ${course.order_index}</div>
+        <h2>${course.title}</h2>
+        <p>${course.description || ''}</p>
+        <div class="progress-bar"><div style="width:${pct}%"></div></div>
+        <div class="progress-label">${p.done} з ${p.total} уроків пройдено</div>
+      </div>
+    `;
+  }
+  app.innerHTML = html;
+}
+
+async function openCourse(courseId){
+  state.currentCourse = courseId;
+  state.currentLessonIdx = 0;
+  app.innerHTML = '<div class="loading">Завантаження...</div>';
+  await loadLessons(courseId);
+  renderLessonList();
+}
+
+function renderLessonList(){
+  const course = state.courses.find(c => c.id === state.currentCourse);
+  const lessons = state.lessons[state.currentCourse];
+  let html = `<button class="back-link" onclick="backToCourses()">← Усі курси</button>
+    <h1 style="margin-top:0;">${course.title}</h1>`;
+  lessons.forEach((l, idx) => {
+    const done = state.progress[l.id] === 'done';
+    html += `
+      <div class="lesson-row" onclick="openLesson(${idx})">
+        <div class="lesson-check ${done ? 'done' : ''}">${done ? '✓' : idx+1}</div>
+        <div class="lesson-title">${l.title}</div>
+      </div>
+    `;
+  });
+  app.innerHTML = html;
+}
+
+function backToCourses(){
+  state.currentCourse = null;
+  render();
+}
+
+async function openLesson(idx){
+  state.currentLessonIdx = idx;
+  const lesson = state.lessons[state.currentCourse][idx];
+  await loadTasks(lesson.id);
+  await markLessonStarted(lesson.id);
+  renderLessonPage();
+}
+
+function renderLessonPage(){
+  const lessons = state.lessons[state.currentCourse];
+  const idx = state.currentLessonIdx;
+  const lesson = lessons[idx];
+  const tasks = state.tasks[lesson.id] || [];
+  const done = state.progress[lesson.id] === 'done';
+  const images = lesson.images || [];
+
+  let imagesHtml = '';
+  if (images.length){
+    imagesHtml = '<div class="lesson-images">' + images.map(url =>
+      `<img src="${url}" onclick="window.open('${url}','_blank')" />`
+    ).join('') + '</div>';
+  }
+
+  let tasksHtml = '';
+  if (tasks.length){
+    tasksHtml = '<div class="tasks">' + tasks.map(t => `
+      <div class="task ${t.task_type}">
+        <span class="tag">${taskTypeLabel(t.task_type)}</span>
+        <p>${t.task_text}</p>
+        <label>
+          <input type="checkbox" ${state.taskDone[t.id] ? 'checked' : ''}
+            onchange="toggleTask('${t.id}', this.checked)" />
+          Виконано
+        </label>
+      </div>
+    `).join('') + '</div>';
+  }
+
+  app.innerHTML = `
+    <button class="back-link" onclick="renderLessonList()">← До списку уроків</button>
+    <div class="lesson-header">
+      <div class="eyebrow">Урок ${idx+1} з ${lessons.length}</div>
+      <h1>${lesson.title}</h1>
+    </div>
+    ${renderVideo(lesson.video_url)}
+    ${imagesHtml}
+    <div class="lesson-text">${lesson.transcript_text || lesson.description || ''}</div>
+    ${tasksHtml}
+    <div class="lesson-nav">
+      <button ${idx === 0 ? 'disabled' : ''} onclick="openLesson(${idx-1})">← Попередній</button>
+      ${done
+        ? `<button class="primary" ${idx === lessons.length-1 ? 'disabled' : ''} onclick="openLesson(${idx+1})">Наступний →</button>`
+        : `<button class="primary" onclick="completeLesson()">Позначити пройденим</button>`
+      }
+    </div>
+  `;
+}
+
+async function completeLesson(){
+  const lesson = state.lessons[state.currentCourse][state.currentLessonIdx];
+  await markLessonDone(lesson.id);
+  renderLessonPage();
+}
+
+render();
+</script>
+</body>
+</html>
