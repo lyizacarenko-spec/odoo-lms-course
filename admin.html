@@ -17,6 +17,7 @@
   header{
     background:var(--teal-dark); color:#fff; padding:16px 20px;
     display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10;
+    flex-wrap:wrap; gap:10px;
   }
   header .brand{font-weight:700; font-size:16px;}
   header .brand small{display:block; font-weight:400; font-size:12px; opacity:0.7;}
@@ -46,6 +47,7 @@
   button.btn.primary:hover{background:var(--teal-dark);}
   button.btn.danger{color:var(--danger); border-color:var(--danger);}
   button.btn.small{padding:6px 10px; font-size:12px;}
+  button.btn.ghost{border:none; background:none; color:var(--ink-soft); padding:4px 6px;}
   .row{display:flex; gap:10px; align-items:center;}
   .card{
     background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
@@ -55,6 +57,7 @@
     display:inline-flex; align-items:center; gap:6px; color:var(--ink-soft); font-size:13px;
     background:none; border:none; cursor:pointer; padding:0; margin-bottom:16px;
   }
+  .crumbs{font-size:12px; color:var(--ink-soft); margin-bottom:4px;}
   h1.page-title{font-size:22px; margin:0 0 18px;}
   h2.section-title{font-size:15px; margin:24px 0 10px;}
   .add-form{border:1px dashed var(--line); border-radius:8px; padding:16px; margin-top:14px;}
@@ -68,11 +71,10 @@
   }
   .toast.show{opacity:1;}
   .loading{text-align:center; color:var(--ink-soft); padding:60px 20px; font-size:14px;}
-
   .progress-track{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:6px;}
   .progress-track > div{height:100%;background:var(--ok);}
 
-  /* --- DEPARTMENT CARDS --- */
+  /* --- GRID CARDS (department / course) --- */
   .dept-grid{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:14px; margin-top:16px;
   }
@@ -89,11 +91,17 @@
     border-style:dashed; color:var(--ink-soft); font-size:13px; text-align:center; gap:6px;
   }
   .plus{font-size:26px; color:var(--teal); font-weight:300;}
+  .reorder-btns{position:absolute; top:8px; right:8px; display:flex; gap:2px; z-index:2;}
+  .reorder-btns button{
+    width:22px; height:22px; border-radius:5px; border:1px solid var(--line); background:#fff;
+    font-size:11px; cursor:pointer; padding:0; line-height:1; color:var(--ink-soft);
+  }
+  .reorder-btns button:hover{border-color:var(--teal); color:var(--teal);}
+  .dept-card{position:relative;}
+  .funnel-step{position:relative;}
 
   /* --- FUNNEL --- */
-  .funnel{
-    display:flex; align-items:stretch; flex-wrap:wrap; gap:0; margin-top:16px;
-  }
+  .funnel{display:flex; align-items:stretch; flex-wrap:wrap; gap:0; margin-top:16px;}
   .funnel-step{
     background:var(--panel); border:2px solid var(--line); border-radius:12px;
     padding:14px 16px; width:150px; cursor:pointer; transition:border-color .15s, transform .1s;
@@ -107,10 +115,7 @@
   .funnel-step-title{font-size:13px; font-weight:600; line-height:1.3;}
   .funnel-step-icons{display:flex; gap:6px; font-size:13px; opacity:0.35;}
   .funnel-step-icons span.on{opacity:1;}
-  .funnel-arrow{
-    display:flex; align-items:center; justify-content:center; color:var(--line);
-    font-size:20px; width:28px; flex-shrink:0;
-  }
+  .funnel-arrow{display:flex; align-items:center; justify-content:center; color:var(--line); font-size:20px; width:28px; flex-shrink:0;}
   .funnel-step-add{
     display:flex; align-items:center; justify-content:center; flex-direction:column;
     border-style:dashed; color:var(--ink-soft); font-size:12px; gap:4px;
@@ -120,6 +125,26 @@
     .funnel-arrow{transform:rotate(90deg); width:auto; height:24px;}
     .funnel-step{width:100%;}
   }
+
+  /* --- CONTENT BLOCKS EDITOR --- */
+  .block{
+    border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:10px;
+    background:var(--panel); position:relative;
+  }
+  .block-head{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;
+  }
+  .block-type-tag{
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px;
+    padding:3px 8px; border-radius:5px; color:#fff;
+  }
+  .block-type-tag.text{background:#6b7fd7;}
+  .block-type-tag.video{background:var(--amber);}
+  .block-type-tag.audio{background:#a15fc9;}
+  .block-type-tag.image{background:var(--ok);}
+  .block-actions{display:flex; gap:4px;}
+  .add-block-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  .add-block-row button{flex:1; min-width:100px;}
 </style>
 </head>
 <body>
@@ -143,12 +168,15 @@ const headerActions = document.getElementById('headerActions');
 
 let state = {
   authed: sessionStorage.getItem('lms_admin') === 'yes',
-  view: 'courses',       // courses | course | lesson
+  view: 'departments',   // departments | courses | course | lesson | progress
+  departmentId: null,
   courseId: null,
   lessonId: null,
+  departments: [],
   courses: [],
   lessons: [],
-  tasks: []
+  tasks: [],
+  blocks: []             // content_blocks поточного уроку (робочий стан редактора)
 };
 
 function toast(msg){
@@ -156,6 +184,20 @@ function toast(msg){
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
+}
+function escAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
+function uid(){ return 'b' + Date.now() + Math.random().toString(36).slice(2,8); }
+
+// Універсальна перестановка місцями двох рядків (міняємо order_index)
+async function reorderItems(table, items, idx, dir, afterReload){
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= items.length) return;
+  const a = items[idx], b = items[newIdx];
+  const aOrder = a.order_index, bOrder = b.order_index;
+  await sb.from(table).update({ order_index: bOrder }).eq('id', a.id);
+  await sb.from(table).update({ order_index: aOrder }).eq('id', b.id);
+  toast('Порядок оновлено');
+  afterReload();
 }
 
 function logout(){
@@ -172,6 +214,7 @@ async function render(){
       <button onclick="logout()">Вийти</button>
     </div>` : '';
   if (!state.authed) return renderLogin();
+  if (state.view === 'departments') return renderDepartments();
   if (state.view === 'courses') return renderCourses();
   if (state.view === 'course') return renderCourse();
   if (state.view === 'lesson') return renderLesson();
@@ -179,11 +222,11 @@ async function render(){
 }
 
 function goToDepartments(){
-  state.view = 'courses';
+  state.view = 'departments';
+  state.departmentId = null;
   state.courseId = null;
   render();
 }
-
 function goToProgress(){
   state.view = 'progress';
   render();
@@ -201,7 +244,6 @@ function renderLogin(){
     </div>`;
   document.getElementById('pw').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
 }
-
 function doLogin(){
   const v = document.getElementById('pw').value;
   if (v === ADMIN_PASSWORD){
@@ -213,15 +255,10 @@ function doLogin(){
   }
 }
 
-function escAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
-
-// --- Санітизація імені файлу для Supabase Storage ---
-// Storage key не приймає кирилицю, пробіли та деякі символи — транслітеруємо/чистимо.
 function sanitizeFileName(name){
   const dot = name.lastIndexOf('.');
   const ext = dot >= 0 ? name.slice(dot) : '';
   let base = dot >= 0 ? name.slice(0, dot) : name;
-
   const map = {а:'a',б:'b',в:'v',г:'g',ґ:'g',д:'d',е:'e',є:'ie',ж:'zh',з:'z',и:'y',і:'i',ї:'i',
     й:'i',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',
     ч:'ch',ш:'sh',щ:'shch',ь:'',ю:'iu',я:'ia',ы:'y',э:'e',ъ:''};
@@ -236,182 +273,177 @@ function getYoutubeId(url){
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : null;
 }
-
 function getDriveId(url){
   if (!url) return null;
   const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   return m ? m[1] : null;
 }
 
-function isDirectVideo(url){
-  if (!url) return false;
-  return /supabase\.co\/storage/.test(url) || /\.(mp4|webm|mov)$/i.test(url);
-}
+// ---------- РІВЕНЬ 1: ВІДДІЛИ ----------
 
-function renderVideoPreview(url){
-  const yid = getYoutubeId(url);
-  if (yid){
-    return `<iframe width="100%" height="280" style="border-radius:8px;margin-bottom:8px;border:none;"
-      src="https://www.youtube.com/embed/${yid}" allowfullscreen></iframe>`;
-  }
-  const did = getDriveId(url);
-  if (did){
-    return `<iframe width="100%" height="280" style="border-radius:8px;margin-bottom:8px;border:none;"
-      src="https://drive.google.com/file/d/${did}/preview" allow="autoplay" allowfullscreen></iframe>`;
-  }
-  if (isDirectVideo(url)){
-    return `<video controls style="width:100%;border-radius:8px;margin-bottom:8px;"><source src="${url}"></video>`;
-  }
-  return `<div class="upload-status">Посилання збережено: <a href="${url}" target="_blank">${url}</a></div>`;
-}
-
-async function saveVideoUrl(){
-  const url = document.getElementById('videoUrlInput').value.trim();
-  const { error } = await sb.from('lessons').update({ video_url: url }).eq('id', state.lessonId);
-  if (error){ toast('Помилка збереження'); console.error(error); return; }
-  toast('Посилання на відео збережено');
-  renderLesson();
-}
-
-async function removeVideo(){
-  if (!confirm('Прибрати відео з цього кроку?')) return;
-  const { error } = await sb.from('lessons').update({ video_url: null }).eq('id', state.lessonId);
-  if (error){ toast('Помилка видалення'); console.error(error); return; }
-  toast('Відео видалено');
-  renderLesson();
-}
-
-async function removeAudio(){
-  if (!confirm('Прибрати аудіо з цього кроку?')) return;
-  const { error } = await sb.from('lessons').update({ audio_url: null }).eq('id', state.lessonId);
-  if (error){ toast('Помилка видалення'); console.error(error); return; }
-  toast('Аудіо видалено');
-  renderLesson();
-}
-
-// ---------- ПРОГРЕС КОМАНДИ ----------
-
-async function renderProgress(){
-  app.innerHTML = '<div class="loading">Завантаження...</div>';
-
-  await loadCourses();
-  for (const c of state.courses){
-    await loadLessons(c.id);
-    if (!state._allLessons) state._allLessons = {};
-    state._allLessons[c.id] = state.lessons;
-  }
-  // перезбираємо всі уроки по всіх відділах в один масив з прив'язкою до courseId
-  const allLessons = [];
-  for (const c of state.courses){
-    const { data } = await sb.from('lessons').select('*').eq('course_id', c.id).order('order_index');
-    (data||[]).forEach(l => allLessons.push({...l, course_title: c.title, course_id: c.id}));
-  }
-
-  const { data: progressRows, error } = await sb.from('user_progress').select('*').order('completed_at', {ascending:false});
-  if (error){ app.innerHTML = '<div class="loading">Помилка завантаження прогресу: '+error.message+'</div>'; return; }
-
-  if (!progressRows.length){
-    app.innerHTML = `<h1 class="page-title">Прогрес команди</h1>
-      <p style="color:var(--ink-soft);">Поки що ніхто не почав проходити курс.</p>`;
-    return;
-  }
-
-  // групуємо: email -> course_id -> {done, total, lastLesson, lastActivity}
-  const byUser = {};
-  progressRows.forEach(p => {
-    const lesson = allLessons.find(l => l.id === p.lesson_id);
-    if (!lesson) return;
-    if (!byUser[p.user_identifier]) byUser[p.user_identifier] = {};
-    if (!byUser[p.user_identifier][lesson.course_id]){
-      byUser[p.user_identifier][lesson.course_id] = { course_id: lesson.course_id, course_title: lesson.course_title, done:0, total:0, lastActivity: null, lastLessonTitle: null };
-    }
-    const entry = byUser[p.user_identifier][lesson.course_id];
-    if (p.status === 'done') entry.done++;
-    const activityTime = p.completed_at || p.started_at;
-    if (activityTime && (!entry.lastActivity || activityTime > entry.lastActivity)){
-      entry.lastActivity = activityTime;
-      entry.lastLessonTitle = lesson.title;
-    }
-  });
-
-  // total уроків по кожному відділу (незалежно від прогресу)
-  const totalsByCourseId = {};
-  allLessons.forEach(l => { totalsByCourseId[l.course_id] = (totalsByCourseId[l.course_id]||0) + 1; });
-
-  let html = `<h1 class="page-title">Прогрес команди</h1>`;
-
-  Object.keys(byUser).sort().forEach(email => {
-    html += `<div class="card">
-      <div style="font-weight:700;font-size:15px;margin-bottom:10px;">${email}</div>`;
-    Object.values(byUser[email]).forEach(entry => {
-      const total = totalsByCourseId[entry.course_id] || '?';
-      const pct = total && total !== '?' ? Math.round(entry.done/total*100) : 0;
-      const when = entry.lastActivity ? new Date(entry.lastActivity).toLocaleDateString('uk-UA', {day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
-      html += `
-        <div style="padding:10px 0;border-top:1px solid var(--line);">
-          <div class="row" style="justify-content:space-between;">
-            <div style="font-size:13px;font-weight:600;">${entry.course_title}</div>
-            <div style="font-size:12px;color:var(--ink-soft);">${entry.done} / ${total} уроків</div>
-          </div>
-          <div class="progress-track"><div style="width:${pct}%"></div></div>
-          <div style="font-size:12px;color:var(--ink-soft);margin-top:4px;">Останній крок: ${entry.lastLessonTitle || '—'} · ${when}</div>
-        </div>`;
-    });
-    html += `</div>`;
-  });
-
-  app.innerHTML = html;
-}
-
-async function loadCourses(){
-  const { data, error } = await sb.from('courses').select('*').order('order_index');
+async function loadDepartments(){
+  const { data, error } = await sb.from('departments').select('*').order('order_index');
   if (error){ toast('Помилка завантаження відділів'); console.error(error); return; }
-  state.courses = data;
+  state.departments = data;
 }
 
-async function renderCourses(){
+async function renderDepartments(){
   app.innerHTML = '<div class="loading">Завантаження...</div>';
-  await loadCourses();
+  await loadDepartments();
   let html = `<h1 class="page-title">Відділи</h1>
-    <p style="color:var(--ink-soft);font-size:13px;margin-top:-10px;">Обери відділ, щоб побудувати його воронку навчання</p>`;
-  html += `<div class="dept-grid">`;
-  state.courses.forEach(c => {
+    <p style="color:var(--ink-soft);font-size:13px;margin-top:-10px;">Обери відділ (напр. РЗПК), щоб побудувати його курси</p>
+    <div class="dept-grid">`;
+  state.departments.forEach((d, idx) => {
     html += `
-      <div class="dept-card" onclick="openCourse('${c.id}')">
+      <div class="dept-card" onclick="openDepartment('${d.id}')">
+        <div class="reorder-btns">
+          <button onclick="event.stopPropagation(); reorderItems('departments', state.departments, ${idx}, -1, renderDepartments)" ${idx===0?'disabled':''}>◀</button>
+          <button onclick="event.stopPropagation(); reorderItems('departments', state.departments, ${idx}, 1, renderDepartments)" ${idx===state.departments.length-1?'disabled':''}>▶</button>
+        </div>
+        ${d.cover_image ? `<img src="${d.cover_image}" style="width:100%;height:90px;object-fit:cover;border-radius:6px;margin-bottom:8px;" />` : ''}
         <div class="dept-num">Відділ</div>
-        <h2>${c.title}</h2>
-        <p>${c.description || ''}</p>
+        <h2>${d.title}</h2>
+        <p>${d.description || ''}</p>
       </div>`;
   });
   html += `
       <div class="dept-card dept-add" onclick="showAddDept()">
         <div class="plus">+</div>
         <div>Новий відділ</div>
-      </div>`;
-  html += `</div>`;
-  html += `
+      </div>
+    </div>
     <div class="add-form" id="addDeptForm" style="display:none;">
       <label class="field-label">Назва відділу</label>
-      <input type="text" id="newCourseTitle" placeholder="Напр. Гарячі продажі" />
+      <input type="text" id="newDeptTitle" placeholder="Напр. РЗПК" />
       <label class="field-label">Опис</label>
-      <textarea id="newCourseDesc" placeholder="Короткий опис відділу"></textarea>
-      <button class="btn primary" onclick="createCourse()">+ Створити відділ</button>
+      <textarea id="newDeptDesc" placeholder="Короткий опис відділу"></textarea>
+      <button class="btn primary" onclick="createDepartment()">+ Створити відділ</button>
     </div>`;
   app.innerHTML = html;
 }
+function showAddDept(){ document.getElementById('addDeptForm').style.display = 'block'; }
 
-function showAddDept(){
-  document.getElementById('addDeptForm').style.display = 'block';
+async function createDepartment(){
+  const title = document.getElementById('newDeptTitle').value.trim();
+  if (!title) return toast('Введи назву відділу');
+  const description = document.getElementById('newDeptDesc').value.trim();
+  const order_index = state.departments.length + 1;
+  const { error } = await sb.from('departments').insert({ title, description, order_index, is_active: true });
+  if (error){ toast('Помилка створення'); console.error(error); return; }
+  toast('Відділ додано');
+  renderDepartments();
+}
+
+async function openDepartment(id){
+  state.departmentId = id;
+  state.view = 'courses';
+  render();
+}
+
+// ---------- РІВЕНЬ 2: КУРСИ (в межах відділу) ----------
+
+async function loadCoursesForDept(deptId){
+  const { data, error } = await sb.from('courses').select('*').eq('department_id', deptId).order('order_index');
+  if (error){ toast('Помилка завантаження курсів'); console.error(error); return; }
+  state.courses = data;
+}
+
+async function renderCourses(){
+  app.innerHTML = '<div class="loading">Завантаження...</div>';
+  await loadDepartments();
+  await loadCoursesForDept(state.departmentId);
+  const dept = state.departments.find(d => d.id === state.departmentId);
+
+  let html = `<button class="back-link" onclick="goToDepartments()">← Усі відділи</button>
+    <h1 class="page-title">${dept.title}</h1>
+    <div class="card">
+      ${dept.cover_image ? `<img src="${dept.cover_image}" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-bottom:10px;" />` : ''}
+      <label class="field-label">Постер відділу (необов'язково)</label>
+      <input type="file" accept="image/*" onchange="uploadDeptCover(this)" />
+      <div class="upload-status" id="deptCoverStatus"></div>
+      <label class="field-label" style="margin-top:10px;">Назва відділу</label>
+      <input type="text" id="deptTitle" value="${escAttr(dept.title)}" />
+      <label class="field-label">Опис</label>
+      <textarea id="deptDesc">${dept.description || ''}</textarea>
+      <div class="row">
+        <button class="btn primary small" onclick="saveDepartment()">Зберегти зміни</button>
+        <button class="btn danger small" onclick="deleteDepartment()">Видалити відділ</button>
+      </div>
+    </div>
+
+    <h2 class="section-title">Курси</h2>
+    <div class="dept-grid">`;
+  state.courses.forEach((c, idx) => {
+    html += `
+      <div class="dept-card" onclick="openCourse('${c.id}')">
+        <div class="reorder-btns">
+          <button onclick="event.stopPropagation(); reorderItems('courses', state.courses, ${idx}, -1, renderCourses)" ${idx===0?'disabled':''}>◀</button>
+          <button onclick="event.stopPropagation(); reorderItems('courses', state.courses, ${idx}, 1, renderCourses)" ${idx===state.courses.length-1?'disabled':''}>▶</button>
+        </div>
+        ${c.cover_image ? `<img src="${c.cover_image}" style="width:100%;height:90px;object-fit:cover;border-radius:6px;margin-bottom:8px;" />` : ''}
+        <div class="dept-num">Курс</div>
+        <h2>${c.title}</h2>
+        <p>${c.description || ''}</p>
+      </div>`;
+  });
+  html += `
+      <div class="dept-card dept-add" onclick="showAddCourse()">
+        <div class="plus">+</div>
+        <div>Новий курс</div>
+      </div>
+    </div>
+    <div class="add-form" id="addCourseForm" style="display:none;">
+      <label class="field-label">Назва курсу</label>
+      <input type="text" id="newCourseTitle" placeholder="Напр. Odoo" />
+      <label class="field-label">Опис</label>
+      <textarea id="newCourseDesc" placeholder="Короткий опис курсу"></textarea>
+      <button class="btn primary" onclick="createCourse()">+ Створити курс</button>
+    </div>`;
+  app.innerHTML = html;
+}
+function showAddCourse(){ document.getElementById('addCourseForm').style.display = 'block'; }
+
+async function uploadDeptCover(inputEl){
+  const file = inputEl.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('deptCoverStatus');
+  statusEl.textContent = 'Завантаження...';
+  const safeName = sanitizeFileName(file.name);
+  const path = `covers/dept_${state.departmentId}_${Date.now()}_${safeName}`;
+  const { error } = await sb.storage.from('lesson-images').upload(path, file, { upsert: true });
+  if (error){ statusEl.textContent = 'Помилка: ' + error.message; console.error(error); return; }
+  const { data: pub } = sb.storage.from('lesson-images').getPublicUrl(path);
+  await sb.from('departments').update({ cover_image: pub.publicUrl }).eq('id', state.departmentId);
+  toast('Постер додано');
+  renderCourses();
+}
+
+async function saveDepartment(){
+  const title = document.getElementById('deptTitle').value.trim();
+  const description = document.getElementById('deptDesc').value.trim();
+  const { error } = await sb.from('departments').update({ title, description }).eq('id', state.departmentId);
+  if (error){ toast('Помилка збереження'); console.error(error); return; }
+  toast('Збережено');
+  renderCourses();
+}
+async function deleteDepartment(){
+  if (!confirm('Видалити відділ і всі курси/кроки в ньому? Це незворотньо.')) return;
+  const { error } = await sb.from('departments').delete().eq('id', state.departmentId);
+  if (error){ toast('Помилка видалення'); console.error(error); return; }
+  toast('Відділ видалено');
+  goToDepartments();
 }
 
 async function createCourse(){
   const title = document.getElementById('newCourseTitle').value.trim();
-  if (!title) return toast('Введи назву відділу');
+  if (!title) return toast('Введи назву курсу');
   const description = document.getElementById('newCourseDesc').value.trim();
   const order_index = state.courses.length + 1;
-  const { error } = await sb.from('courses').insert({ title, description, order_index, is_active: true });
+  const { error } = await sb.from('courses').insert({
+    title, description, order_index, is_active: true, department_id: state.departmentId
+  });
   if (error){ toast('Помилка створення'); console.error(error); return; }
-  toast('Відділ додано');
+  toast('Курс додано');
   renderCourses();
 }
 
@@ -421,6 +453,8 @@ async function openCourse(id){
   render();
 }
 
+// ---------- РІВЕНЬ 3: ВОРОНКА КРОКІВ (в межах курсу) ----------
+
 async function loadLessons(courseId){
   const { data, error } = await sb.from('lessons').select('*').eq('course_id', courseId).order('order_index');
   if (error){ toast('Помилка завантаження кроків'); console.error(error); return; }
@@ -429,41 +463,53 @@ async function loadLessons(courseId){
 
 async function renderCourse(){
   app.innerHTML = '<div class="loading">Завантаження...</div>';
+  await loadDepartments();
+  await loadCoursesForDept(state.departmentId);
   await loadLessons(state.courseId);
+  const dept = state.departments.find(d => d.id === state.departmentId);
   const course = state.courses.find(c => c.id === state.courseId);
 
-  let html = `<button class="back-link" onclick="backToCourses()">← Усі відділи</button>
+  let html = `<button class="back-link" onclick="backToCourses()">← Усі курси</button>
+    <div class="crumbs">${dept.title} / Курси</div>
     <h1 class="page-title">${course.title}</h1>
     <div class="card">
-      <label class="field-label">Назва відділу</label>
+      ${course.cover_image ? `<img src="${course.cover_image}" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-bottom:10px;" />` : ''}
+      <label class="field-label">Постер курсу (необов'язково)</label>
+      <input type="file" accept="image/*" onchange="uploadCourseCover(this)" />
+      <div class="upload-status" id="courseCoverStatus"></div>
+      <label class="field-label" style="margin-top:10px;">Назва курсу</label>
       <input type="text" id="courseTitle" value="${escAttr(course.title)}" />
       <label class="field-label">Опис</label>
       <textarea id="courseDesc">${course.description || ''}</textarea>
       <div class="row">
         <button class="btn primary small" onclick="saveCourse()">Зберегти зміни</button>
-        <button class="btn danger small" onclick="deleteCourse()">Видалити відділ</button>
+        <button class="btn danger small" onclick="deleteCourse()">Видалити курс</button>
       </div>
     </div>
 
     <h2 class="section-title">Воронка навчання</h2>
-    <p style="color:var(--ink-soft);font-size:13px;margin-top:-6px;">Клікни на крок, щоб додати фото, відео, текст і завдання</p>
-
+    <p style="color:var(--ink-soft);font-size:13px;margin-top:-6px;">Клікни на крок, щоб додати вміст у потрібному порядку</p>
     <div class="funnel">`;
 
   state.lessons.forEach((l, idx) => {
-    const hasVideo = !!l.video_url;
-    const hasAudio = !!l.audio_url;
-    const hasImages = l.images && l.images.length;
-    const hasText = l.transcript_text && l.transcript_text.trim().length > 0;
+    const blocks = l.content_blocks || [];
+    const hasText = blocks.some(b => b.type === 'text');
+    const hasVideo = blocks.some(b => b.type === 'video');
+    const hasAudio = blocks.some(b => b.type === 'audio');
+    const hasImage = blocks.some(b => b.type === 'image');
     html += `
       <div class="funnel-step" onclick="openLesson('${l.id}')">
+        <div class="reorder-btns">
+          <button onclick="event.stopPropagation(); reorderItems('lessons', state.lessons, ${idx}, -1, renderCourse)" ${idx===0?'disabled':''}>◀</button>
+          <button onclick="event.stopPropagation(); reorderItems('lessons', state.lessons, ${idx}, 1, renderCourse)" ${idx===state.lessons.length-1?'disabled':''}>▶</button>
+        </div>
         <div class="funnel-step-num">${idx+1}</div>
         <div class="funnel-step-title">${l.title}</div>
         <div class="funnel-step-icons">
           <span class="${hasText ? 'on' : ''}" title="Текст">📝</span>
           <span class="${hasVideo ? 'on' : ''}" title="Відео">🎥</span>
           <span class="${hasAudio ? 'on' : ''}" title="Аудіо">🎧</span>
-          <span class="${hasImages ? 'on' : ''}" title="Фото">🖼️</span>
+          <span class="${hasImage ? 'on' : ''}" title="Фото">🖼️</span>
         </div>
       </div>
       ${idx < state.lessons.length - 1 ? '<div class="funnel-arrow">→</div>' : ''}`;
@@ -476,7 +522,6 @@ async function renderCourse(){
         <div>Новий крок</div>
       </div>
     </div>
-
     <div class="add-form" id="addStepForm" style="display:none;">
       <label class="field-label">Назва кроку воронки</label>
       <input type="text" id="newLessonTitle" placeholder="Напр. Дзвінок клієнту" />
@@ -484,9 +529,21 @@ async function renderCourse(){
     </div>`;
   app.innerHTML = html;
 }
+function showAddStep(){ document.getElementById('addStepForm').style.display = 'block'; }
 
-function showAddStep(){
-  document.getElementById('addStepForm').style.display = 'block';
+async function uploadCourseCover(inputEl){
+  const file = inputEl.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('courseCoverStatus');
+  statusEl.textContent = 'Завантаження...';
+  const safeName = sanitizeFileName(file.name);
+  const path = `covers/course_${state.courseId}_${Date.now()}_${safeName}`;
+  const { error } = await sb.storage.from('lesson-images').upload(path, file, { upsert: true });
+  if (error){ statusEl.textContent = 'Помилка: ' + error.message; console.error(error); return; }
+  const { data: pub } = sb.storage.from('lesson-images').getPublicUrl(path);
+  await sb.from('courses').update({ cover_image: pub.publicUrl }).eq('id', state.courseId);
+  toast('Постер додано');
+  renderCourse();
 }
 
 async function saveCourse(){
@@ -495,45 +552,38 @@ async function saveCourse(){
   const { error } = await sb.from('courses').update({ title, description }).eq('id', state.courseId);
   if (error){ toast('Помилка збереження'); console.error(error); return; }
   toast('Збережено');
-  const idx = state.courses.findIndex(c => c.id === state.courseId);
-  state.courses[idx].title = title;
-  state.courses[idx].description = description;
 }
-
 async function deleteCourse(){
-  if (!confirm('Видалити відділ і всі його кроки та завдання? Це незворотньо.')) return;
+  if (!confirm('Видалити курс і всі його кроки та завдання? Це незворотньо.')) return;
   const { error } = await sb.from('courses').delete().eq('id', state.courseId);
   if (error){ toast('Помилка видалення'); console.error(error); return; }
-  toast('Відділ видалено');
+  toast('Курс видалено');
   backToCourses();
 }
-
 async function createLesson(){
   const title = document.getElementById('newLessonTitle').value.trim();
   if (!title) return toast('Введи назву кроку');
   const order_index = state.lessons.length + 1;
   const { error } = await sb.from('lessons').insert({
-    course_id: state.courseId, title, order_index, images: []
+    course_id: state.courseId, title, order_index, images: [], content_blocks: []
   });
   if (error){ toast('Помилка створення кроку'); console.error(error); return; }
   toast('Крок додано');
   renderCourse();
 }
-
 function backToCourses(){
   state.view = 'courses';
   state.courseId = null;
   render();
 }
 
-// ---------- LESSON (КРОК) ----------
+// ---------- КРОК: РЕДАКТОР БЛОКІВ ----------
 
 async function loadTasks(lessonId){
   const { data, error } = await sb.from('lesson_tasks').select('*').eq('lesson_id', lessonId).order('order_index');
   if (error){ toast('Помилка завантаження завдань'); console.error(error); return; }
   state.tasks = data;
 }
-
 async function openLesson(id){
   state.lessonId = id;
   state.view = 'lesson';
@@ -545,9 +595,7 @@ async function renderLesson(){
   await loadLessons(state.courseId);
   await loadTasks(state.lessonId);
   const lesson = state.lessons.find(l => l.id === state.lessonId);
-
-  const images = lesson.images || [];
-  let thumbs = images.map((url, i) => `<img src="${url}" onclick="removeImage(${i})" title="Клік — видалити" />`).join('');
+  state.blocks = JSON.parse(JSON.stringify(lesson.content_blocks || []));
 
   let html = `<button class="back-link" onclick="backToCourse()">← До воронки</button>
     <h1 class="page-title">${lesson.title}</h1>
@@ -555,42 +603,24 @@ async function renderLesson(){
     <div class="card">
       <label class="field-label">Назва кроку</label>
       <input type="text" id="lessonTitle" value="${escAttr(lesson.title)}" />
+      <button class="btn small" onclick="saveLessonTitle()">Зберегти назву</button>
+    </div>
 
-      <label class="field-label">Відео</label>
-      ${lesson.video_url ? renderVideoPreview(lesson.video_url) : ''}
-      ${lesson.video_url ? `<button class="btn danger small" style="margin-bottom:10px;" onclick="removeVideo()">Видалити відео</button>` : ''}
+    <h2 class="section-title">Вміст кроку</h2>
+    <p style="color:var(--ink-soft);font-size:13px;margin-top:-6px;">Додавай блоки в потрібному порядку — текст, відео, фото, аудіо можна чергувати як завгодно</p>
 
-      <label class="field-label" style="margin-top:10px;">Варіант 1 — вставити посилання (Google Drive, YouTube тощо)</label>
-      <div class="row">
-        <input type="text" id="videoUrlInput" placeholder="https://drive.google.com/..." value="${isDirectVideo(lesson.video_url) ? '' : escAttr(lesson.video_url||'')}" />
-        <button class="btn small" onclick="saveVideoUrl()">Зберегти</button>
-      </div>
+    <div id="blocksContainer"></div>
 
-      <label class="field-label" style="margin-top:10px;">Варіант 2 — завантажити файл (до 50 МБ)</label>
-      <input type="file" id="videoFile" accept="video/*" />
-      <div class="upload-status" id="videoStatus"></div>
+    <div class="add-block-row">
+      <button class="btn" onclick="addBlock('text')">+ Текст</button>
+      <button class="btn" onclick="addBlock('video')">+ Відео</button>
+      <button class="btn" onclick="addBlock('audio')">+ Аудіо</button>
+      <button class="btn" onclick="addBlock('image')">+ Фото</button>
+    </div>
 
-      <label class="field-label" style="margin-top:16px;">Аудіо (mp3)</label>
-      ${lesson.audio_url ? `<audio controls style="width:100%;margin-bottom:8px;"><source src="${lesson.audio_url}"></audio>
-        <button class="btn danger small" style="margin-bottom:10px;" onclick="removeAudio()">Видалити аудіо</button>` : ''}
-      <input type="file" id="audioFile" accept="audio/*,.mp3" />
-      <div class="upload-status" id="audioStatus"></div>
-
-      <label class="field-label" style="margin-top:16px;">Короткий опис / вступ (під відео)</label>
-      <textarea id="lessonDesc">${lesson.description || ''}</textarea>
-
-      <label class="field-label">Текст кроку / транскрипція відео</label>
-      <textarea id="lessonText" style="min-height:220px;">${lesson.transcript_text || ''}</textarea>
-
-      <label class="field-label" style="margin-top:12px;">Фото / картинки</label>
-      <div class="thumb-row">${thumbs}</div>
-      <input type="file" id="imageFile" accept="image/*" multiple />
-      <div class="upload-status" id="imageStatus"></div>
-
-      <div class="row" style="margin-top:14px;">
-        <button class="btn primary small" onclick="saveLesson()">Зберегти крок</button>
-        <button class="btn danger small" onclick="deleteLesson()">Видалити крок</button>
-      </div>
+    <div class="row" style="margin-top:16px;">
+      <button class="btn primary" onclick="saveBlocks()">Зберегти вміст кроку</button>
+      <button class="btn danger small" onclick="deleteLesson()">Видалити крок</button>
     </div>
 
     <h2 class="section-title">Завдання (${state.tasks.length})</h2>`;
@@ -610,7 +640,6 @@ async function renderLesson(){
         </div>
       </div>`;
   });
-
   html += `
     <div class="add-form">
       <label class="field-label">Тип завдання</label>
@@ -625,6 +654,7 @@ async function renderLesson(){
     </div>`;
 
   app.innerHTML = html;
+  renderBlocks();
 }
 
 function backToCourse(){
@@ -633,15 +663,12 @@ function backToCourse(){
   render();
 }
 
-async function saveLesson(){
+async function saveLessonTitle(){
   const title = document.getElementById('lessonTitle').value.trim();
-  const description = document.getElementById('lessonDesc').value.trim();
-  const transcript_text = document.getElementById('lessonText').value;
-  const { error } = await sb.from('lessons').update({ title, description, transcript_text }).eq('id', state.lessonId);
+  const { error } = await sb.from('lessons').update({ title }).eq('id', state.lessonId);
   if (error){ toast('Помилка збереження'); console.error(error); return; }
-  toast('Крок збережено');
+  toast('Назву збережено');
 }
-
 async function deleteLesson(){
   if (!confirm('Видалити крок і всі його завдання?')) return;
   const { error } = await sb.from('lessons').delete().eq('id', state.lessonId);
@@ -650,110 +677,128 @@ async function deleteLesson(){
   backToCourse();
 }
 
-// --- File uploads ---
+// --- Блоки: рендер і керування ---
 
-document.addEventListener('change', async (e) => {
-  if (e.target.id === 'videoFile'){
-    const file = e.target.files[0];
-    if (!file) return;
-    const statusEl = document.getElementById('videoStatus');
-    if (file.size > 50 * 1024 * 1024){
-      statusEl.textContent = 'Файл більший за 50 МБ (' + (file.size/1024/1024).toFixed(1) + ' МБ) — використай посилання (Варіант 1) замість завантаження.';
+function blockTypeLabel(t){
+  if (t==='text') return 'Текст';
+  if (t==='video') return 'Відео';
+  if (t==='audio') return 'Аудіо';
+  if (t==='image') return 'Фото';
+  return t;
+}
+
+function renderBlocks(){
+  const el = document.getElementById('blocksContainer');
+  if (!el) return;
+  if (!state.blocks.length){
+    el.innerHTML = `<p style="color:var(--ink-soft);font-size:13px;">Ще немає жодного блоку — додай перший кнопкою нижче.</p>`;
+    return;
+  }
+  let html = '';
+  state.blocks.forEach((b, idx) => {
+    html += `<div class="block">
+      <div class="block-head">
+        <span class="block-type-tag ${b.type}">${blockTypeLabel(b.type)}</span>
+        <div class="block-actions">
+          <button class="btn ghost" onclick="moveBlock(${idx},-1)" title="Вгору">↑</button>
+          <button class="btn ghost" onclick="moveBlock(${idx},1)" title="Вниз">↓</button>
+          <button class="btn ghost" style="color:var(--danger);" onclick="removeBlock(${idx})" title="Видалити">✕</button>
+        </div>
+      </div>`;
+
+    if (b.type === 'text'){
+      html += `<textarea onchange="updateBlockField(${idx},'text',this.value)">${b.text||''}</textarea>`;
+    }
+    if (b.type === 'video'){
+      if (b.url){
+        const yid = getYoutubeId(b.url);
+        const did = getDriveId(b.url);
+        if (yid) html += `<iframe width="100%" height="240" style="border-radius:8px;margin-bottom:8px;border:none;" src="https://www.youtube.com/embed/${yid}" allowfullscreen></iframe>`;
+        else if (did) html += `<iframe width="100%" height="240" style="border-radius:8px;margin-bottom:8px;border:none;" src="https://drive.google.com/file/d/${did}/preview" allowfullscreen></iframe>`;
+        else html += `<video controls style="width:100%;border-radius:8px;margin-bottom:8px;"><source src="${b.url}"></video>`;
+      }
+      html += `<label class="field-label">Посилання (Google Drive, YouTube тощо)</label>
+        <input type="text" placeholder="https://drive.google.com/..." value="${escAttr(b.url||'')}" onchange="updateBlockField(${idx},'url',this.value)" />
+        <label class="field-label">Або завантажити файл (до 50 МБ)</label>
+        <input type="file" accept="video/*" onchange="uploadBlockFile(${idx},this,'lesson-videos')" />
+        <div class="upload-status" id="blockStatus_${idx}"></div>`;
+    }
+    if (b.type === 'audio'){
+      if (b.url) html += `<audio controls style="width:100%;margin-bottom:8px;"><source src="${b.url}"></audio>`;
+      html += `<label class="field-label">Посилання на аудіо</label>
+        <input type="text" value="${escAttr(b.url||'')}" onchange="updateBlockField(${idx},'url',this.value)" />
+        <label class="field-label">Або завантажити mp3 (до 50 МБ)</label>
+        <input type="file" accept="audio/*,.mp3" onchange="uploadBlockFile(${idx},this,'lesson-audio')" />
+        <div class="upload-status" id="blockStatus_${idx}"></div>`;
+    }
+    if (b.type === 'image'){
+      if (b.url) html += `<img src="${b.url}" style="max-width:200px;border-radius:8px;margin-bottom:8px;display:block;" />`;
+      html += `<label class="field-label">Завантажити фото</label>
+        <input type="file" accept="image/*" onchange="uploadBlockFile(${idx},this,'lesson-images')" />
+        <div class="upload-status" id="blockStatus_${idx}"></div>
+        <label class="field-label" style="margin-top:8px;">Підпис до фото (необов'язково)</label>
+        <input type="text" placeholder="Опис картинки" value="${escAttr(b.caption||'')}" onchange="updateBlockField(${idx},'caption',this.value)" />`;
+    }
+
+    html += `</div>`;
+  });
+  el.innerHTML = html;
+}
+
+function addBlock(type){
+  state.blocks.push({ id: uid(), type, text:'', url:'', caption:'' });
+  renderBlocks();
+}
+function removeBlock(idx){
+  state.blocks.splice(idx,1);
+  renderBlocks();
+}
+function moveBlock(idx, dir){
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= state.blocks.length) return;
+  const tmp = state.blocks[idx];
+  state.blocks[idx] = state.blocks[newIdx];
+  state.blocks[newIdx] = tmp;
+  renderBlocks();
+}
+function updateBlockField(idx, field, value){
+  state.blocks[idx][field] = value;
+}
+
+async function uploadBlockFile(idx, inputEl, bucket){
+  const file = inputEl.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('blockStatus_'+idx);
+  if (file.size > 50 * 1024 * 1024){
+    statusEl.textContent = 'Файл більший за 50 МБ (' + (file.size/1024/1024).toFixed(1) + ' МБ) — встав посилання замість завантаження.';
+    return;
+  }
+  statusEl.textContent = `Завантаження (${(file.size/1024/1024).toFixed(1)} МБ)...`;
+  try {
+    const safeName = sanitizeFileName(file.name);
+    const path = `${state.lessonId}/${Date.now()}_${safeName}`;
+    const { error } = await sb.storage.from(bucket).upload(path, file, { upsert: true });
+    if (error){
+      statusEl.textContent = 'Помилка: ' + error.message;
+      alert('Не вдалося завантажити файл:\n' + error.message);
+      console.error(error);
       return;
     }
-    statusEl.textContent = `Завантаження відео (${(file.size/1024/1024).toFixed(1)} МБ)...`;
-    try {
-      const safeName = sanitizeFileName(file.name);
-      const path = `${state.lessonId}/${Date.now()}_${safeName}`;
-      const { error } = await sb.storage.from('lesson-videos').upload(path, file, { upsert: true });
-      if (error){
-        statusEl.textContent = 'Помилка: ' + error.message;
-        alert('Не вдалося завантажити відео:\n' + error.message);
-        console.error(error);
-        return;
-      }
-      const { data: pub } = sb.storage.from('lesson-videos').getPublicUrl(path);
-      const { error: dbError } = await sb.from('lessons').update({ video_url: pub.publicUrl }).eq('id', state.lessonId);
-      if (dbError){
-        statusEl.textContent = 'Помилка збереження в базі: ' + dbError.message;
-        alert('Відео завантажилось, але не зберіглось в базі:\n' + dbError.message);
-        console.error(dbError);
-        return;
-      }
-      statusEl.textContent = 'Відео завантажено ✓';
-      toast('Відео додано');
-      renderLesson();
-    } catch (ex){
-      statusEl.textContent = 'Неочікувана помилка: ' + ex.message;
-      alert('Неочікувана помилка при завантаженні відео:\n' + ex.message);
-      console.error(ex);
-    }
+    const { data: pub } = sb.storage.from(bucket).getPublicUrl(path);
+    state.blocks[idx].url = pub.publicUrl;
+    statusEl.textContent = 'Завантажено ✓';
+    renderBlocks();
+  } catch (ex){
+    statusEl.textContent = 'Неочікувана помилка: ' + ex.message;
+    console.error(ex);
   }
+}
 
-  if (e.target.id === 'audioFile'){
-    const file = e.target.files[0];
-    if (!file) return;
-    const statusEl = document.getElementById('audioStatus');
-    if (file.size > 50 * 1024 * 1024){
-      statusEl.textContent = 'Файл більший за 50 МБ (' + (file.size/1024/1024).toFixed(1) + ' МБ).';
-      return;
-    }
-    statusEl.textContent = `Завантаження аудіо (${(file.size/1024/1024).toFixed(1)} МБ)...`;
-    try {
-      const safeName = sanitizeFileName(file.name);
-      const path = `${state.lessonId}/${Date.now()}_${safeName}`;
-      const { error } = await sb.storage.from('lesson-audio').upload(path, file, { upsert: true });
-      if (error){
-        statusEl.textContent = 'Помилка: ' + error.message;
-        alert('Не вдалося завантажити аудіо:\n' + error.message);
-        console.error(error);
-        return;
-      }
-      const { data: pub } = sb.storage.from('lesson-audio').getPublicUrl(path);
-      const { error: dbError } = await sb.from('lessons').update({ audio_url: pub.publicUrl }).eq('id', state.lessonId);
-      if (dbError){
-        statusEl.textContent = 'Помилка збереження в базі: ' + dbError.message;
-        console.error(dbError);
-        return;
-      }
-      statusEl.textContent = 'Аудіо завантажено ✓';
-      toast('Аудіо додано');
-      renderLesson();
-    } catch (ex){
-      statusEl.textContent = 'Неочікувана помилка: ' + ex.message;
-      console.error(ex);
-    }
-  }
-
-  if (e.target.id === 'imageFile'){
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    const statusEl = document.getElementById('imageStatus');
-    statusEl.textContent = `Завантаження ${files.length} фото...`;
-    const lesson = state.lessons.find(l => l.id === state.lessonId);
-    let images = lesson.images || [];
-    for (const file of files){
-      const safeName = sanitizeFileName(file.name);
-      const path = `${state.lessonId}/${Date.now()}_${safeName}`;
-      const { error } = await sb.storage.from('lesson-images').upload(path, file, { upsert: true });
-      if (error){ statusEl.textContent = 'Помилка: ' + error.message; console.error(error); continue; }
-      const { data: pub } = sb.storage.from('lesson-images').getPublicUrl(path);
-      images.push(pub.publicUrl);
-    }
-    await sb.from('lessons').update({ images }).eq('id', state.lessonId);
-    statusEl.textContent = 'Фото завантажено ✓';
-    toast('Фото додано');
-    renderLesson();
-  }
-});
-
-async function removeImage(idx){
-  if (!confirm('Прибрати це фото з уроку?')) return;
-  const lesson = state.lessons.find(l => l.id === state.lessonId);
-  const images = (lesson.images || []).filter((_, i) => i !== idx);
-  await sb.from('lessons').update({ images }).eq('id', state.lessonId);
-  toast('Фото прибрано');
-  renderLesson();
+async function saveBlocks(){
+  const { error } = await sb.from('lessons').update({ content_blocks: state.blocks }).eq('id', state.lessonId);
+  if (error){ toast('Помилка збереження'); console.error(error); return; }
+  toast('Вміст кроку збережено');
+  renderCourse ? null : null; // no-op, залишаємось на сторінці
 }
 
 // --- Tasks ---
@@ -768,7 +813,6 @@ async function createTask(){
   toast('Завдання додано');
   renderLesson();
 }
-
 async function saveTask(id){
   const task_type = document.getElementById('taskType_'+id).value;
   const task_text = document.getElementById('taskText_'+id).value;
@@ -776,7 +820,6 @@ async function saveTask(id){
   if (error){ toast('Помилка збереження'); console.error(error); return; }
   toast('Завдання збережено');
 }
-
 async function deleteTask(id){
   if (!confirm('Видалити завдання?')) return;
   const { error } = await sb.from('lesson_tasks').delete().eq('id', id);
@@ -785,13 +828,74 @@ async function deleteTask(id){
   renderLesson();
 }
 
-// Захист: якщо файл перетягнути мишкою будь-куди на сторінку (не на кнопку вибору),
-// браузер за замовчуванням спробує відкрити файл напряму і "зламає" сторінку. Блокуємо це.
+// ---------- ПРОГРЕС КОМАНДИ ----------
+
+async function renderProgress(){
+  app.innerHTML = '<div class="loading">Завантаження...</div>';
+  await loadDepartments();
+  const { data: allCourses } = await sb.from('courses').select('*');
+  const { data: allLessonsRaw } = await sb.from('lessons').select('*');
+  const allLessons = (allLessonsRaw||[]).map(l => {
+    const c = (allCourses||[]).find(c => c.id === l.course_id);
+    return {...l, course_title: c ? c.title : '?', course_id: l.course_id};
+  });
+
+  const { data: progressRows, error } = await sb.from('user_progress').select('*').order('completed_at', {ascending:false});
+  if (error){ app.innerHTML = '<div class="loading">Помилка завантаження прогресу: '+error.message+'</div>'; return; }
+
+  if (!progressRows.length){
+    app.innerHTML = `<h1 class="page-title">Прогрес команди</h1>
+      <p style="color:var(--ink-soft);">Поки що ніхто не почав проходити курс.</p>`;
+    return;
+  }
+
+  const byUser = {};
+  progressRows.forEach(p => {
+    const lesson = allLessons.find(l => l.id === p.lesson_id);
+    if (!lesson) return;
+    if (!byUser[p.user_identifier]) byUser[p.user_identifier] = {};
+    if (!byUser[p.user_identifier][lesson.course_id]){
+      byUser[p.user_identifier][lesson.course_id] = { course_id: lesson.course_id, course_title: lesson.course_title, done:0, lastActivity: null, lastLessonTitle: null };
+    }
+    const entry = byUser[p.user_identifier][lesson.course_id];
+    if (p.status === 'done') entry.done++;
+    const activityTime = p.completed_at || p.started_at;
+    if (activityTime && (!entry.lastActivity || activityTime > entry.lastActivity)){
+      entry.lastActivity = activityTime;
+      entry.lastLessonTitle = lesson.title;
+    }
+  });
+
+  const totalsByCourseId = {};
+  allLessons.forEach(l => { totalsByCourseId[l.course_id] = (totalsByCourseId[l.course_id]||0) + 1; });
+
+  let html = `<h1 class="page-title">Прогрес команди</h1>`;
+  Object.keys(byUser).sort().forEach(email => {
+    html += `<div class="card"><div style="font-weight:700;font-size:15px;margin-bottom:10px;">${email}</div>`;
+    Object.values(byUser[email]).forEach(entry => {
+      const total = totalsByCourseId[entry.course_id] || '?';
+      const pct = total && total !== '?' ? Math.round(entry.done/total*100) : 0;
+      const when = entry.lastActivity ? new Date(entry.lastActivity).toLocaleDateString('uk-UA', {day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+      html += `
+        <div style="padding:10px 0;border-top:1px solid var(--line);">
+          <div class="row" style="justify-content:space-between;">
+            <div style="font-size:13px;font-weight:600;">${entry.course_title}</div>
+            <div style="font-size:12px;color:var(--ink-soft);">${entry.done} / ${total} кроків</div>
+          </div>
+          <div class="progress-track"><div style="width:${pct}%"></div></div>
+          <div style="font-size:12px;color:var(--ink-soft);margin-top:4px;">Останній крок: ${entry.lastLessonTitle || '—'} · ${when}</div>
+        </div>`;
+    });
+    html += `</div>`;
+  });
+  app.innerHTML = html;
+}
+
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   if (e.target.tagName !== 'INPUT'){
     e.preventDefault();
-    toast('Перетягування файлів не підтримується — натисни кнопку "Вибрати файл"');
+    toast('Перетягування файлів не підтримується — натисни кнопку вибору файлу');
   }
 });
 
