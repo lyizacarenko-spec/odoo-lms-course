@@ -648,6 +648,7 @@ function renderLessonPage(){
       <h1>${lesson.title}</h1>
     </div>
     ${renderVideo(lesson.video_url)}
+    ${lesson.audio_url ? `<audio controls style="width:100%;margin-bottom:20px;"><source src="${lesson.audio_url}"></audio>` : ''}
     ${imagesHtml}
     <div class="lesson-text">${lesson.transcript_text || lesson.description || ''}</div>
     ${tasksHtml}
